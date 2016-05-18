@@ -2,125 +2,104 @@
 import numpy as np
 import scipy.signal
 import scipy.ndimage
-import cv2
-import random
 import numpy as np
 import time
 import sys
 
-N = 128
-h = 0.01
+class Model:
 
-Du = 2*1e-5 / h**2 
-Dv = 1e-5 / h**2
+	def __init__(self, param_name, N, mode, measure_fps):
+		self.param_name = param_name
+		if(self.param_name == 'solitons'):
+			self.k = 0.056
+			self.F = 0.020
+ 		elif(self.param_name == 'worms'):
+			self.k = 0.0630
+			self.F = 0.0580
+		elif(self.param_name == 'spirals'):			
+			self.k = 0.0370
+			self.F = 0.0060
+		else:
+			self.k = 0.040
+			self.F = 0.060
+		self.N = N
+		self.h = 1e-2		
+		self.Du = 2 * 1e-5 / self.h**2
+		self.Dv = 1e-5 / self.h**2
+		self.dt = 1.0
+		self.noise = 0.1
 
-dt = 1.0
+		self.ut_1 = np.zeros((self.N, self.N), dtype=float)
+		self.vt_1 = np.zeros((self.N, self.N), dtype=float)
+		self.ut = np.zeros((self.N, self.N), dtype=float)
+		self.vt = np.zeros((self.N, self.N), dtype=float)
 
-F = 0.040
-k = 0.060
+		self.mode = mode
+		if(self.mode == 0):
+			self.stencil = np.zeros((self.N, self.N))
+			self.stencil[0,0] = -4
+			self.stencil[0,1] = 1
+			self.stencil[0,-1] = 1
+			self.stencil[1,0] = 1
+			self.stencil[-1,0] = 1
+			self.fft_mask = np.fft.rfft2(self.stencil)
+		elif(self.mode == 1):
+			self.stencil = np.array([[0, 1., 0], [1., -4., 1.], [0, 1., 0]], dtype=float)
 
-# Solitons
-# k = 0.056
-# F = 0.020
+		self.measure_fps = measure_fps
+		if(measure_fps):
+			self.t0 = time.time()
+		self.epoch = 0
 
-# worms
-F = 0.0580
-k = 0.0630
+	def init(self):
+		if(self.param_name == 'spirals'):
+			self.ut_1[:,:] = np.random.random((self.N, self.N))
+			self.vt_1[:,:] = np.random.random((self.N, self.N))
+		else:
+			dN = self.N/4
+			self.ut_1[:,:] = 1
+			self.ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
+			self.ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+			self.ut_1[self.ut_1 <= 0] = 0
 
+			self.vt_1[:,:] = 0
+			self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
+			self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+			self.vt_1[self.vt_1 <= 0] = 0
 
-# Spirals and wave fronts
-# for the initialization, you should not use the square
-# but perturb it with some circles (press 'c' while the app is running)
-#F = 0.0060
-#k = 0.0370
-
-#F = 0.0620
-#k  = 0.0609
-
-
-noise = 0.1
-
-dN = N/4
-
-stencil = np.zeros((N, N))
-stencil[0,0] = -4
-stencil[0,1] = 1
-stencil[0,-1] = 1
-stencil[1,0] = 1
-stencil[-1,0] = 1
-fft_mask = np.fft.rfft2(stencil)
-
-mode = int(sys.argv[1])
-
-# On 128 x 128
-# mode 1 : 300 fps
-
-if(mode == 0):	
-	def laplacian(x):
-		return np.fft.irfft2(np.fft.rfft2(x)*fft_mask)
-elif mode == 1:
-	def laplacian(x):
-		stencil = np.array([[0, 1., 0], [1., -4., 1.], [0, 1., 0]], dtype=float)
-		return scipy.ndimage.convolve(x, stencil, mode='wrap')
-elif mode == 2:
-	def laplacian(x):
-		return scipy.ndimage.laplace(x, mode='wrap')
-
-def step(ut_1, vt_1, ut, vt, Du, Dv, F, k, dt):
-	uvv = ut_1 * vt_1**2
-	lu = laplacian(ut_1)
-	lv = laplacian(vt_1)	
-	ut[:,:] = ut_1 + dt * (Du * lu - uvv + F*(1-ut_1))
-	vt[:,:] = vt_1 + dt * (Dv * lv + uvv - (F + k) * vt_1)
-
-def init(u, v, noise=0.01):
-	u[:,:] = 1
-	u[(N/2 - dN/2): (N/2+dN/2+1), (N/2 - dN/2) : (N/2+dN/2+1)] = 0.5
-	u += noise * (2 * np.random.random((N, N)) - 1)
-	u[u <= 0] = 0
-
-	v[:,:] = 0
-	v[(N/2 - dN/2): (N/2+dN/2+1), (N/2 - dN/2) : (N/2+dN/2+1)] = 0.25
-	v += noise * (2 * np.random.random((N, N)) - 1)
-	v[v <= 0] = 0
-
-	return u, v
+	def laplacian(self, x):
+		if(self.mode == 0):
+			return np.fft.irfft2(np.fft.rfft2(x)*self.fft_mask)
+		elif(self.mode == 1):
+			return scipy.ndimage.convolve(x, self.stencil, mode='wrap')
+		elif(self.mode == 2):
+			return scipy.ndimage.laplace(x, mode='wrap')
 
 
-cv2.namedWindow('u')
-cv2.namedWindow('v')
 
-key = 0
-run = False
-epoch = 0
+	def step(self):
+		uvv = self.ut_1 * self.vt_1**2
+		lu = self.laplacian(self.ut_1)
+		lv = self.laplacian(self.vt_1)	
+		self.ut[:,:] = self.ut_1 + self.dt * (self.Du * lu - uvv + self.F*(1-self.ut_1))
+		self.vt[:,:] = self.vt_1 + self.dt * (self.Dv * lv + uvv - (self.F + self.k) * self.vt_1)
 
-ut_1 = np.zeros((N, N), dtype=float)
-vt_1 = np.zeros((N, N), dtype=float)
-ut = np.zeros((N, N), dtype=float)
-vt = np.zeros((N, N), dtype=float)
-init(ut_1, vt_1)
+		self.epoch += 1
+		self.ut_1, self.vt_1  = self.ut, self.vt
 
-t0 = time.time()
+		if(self.measure_fps and (self.epoch % 100 == 0)):
+			self.t1 = time.time()
+			print("FPS : %f f/s" % (100 / (self.t1 - self.t0)))
+			self.t0 = self.t1
 
-while key != ord('q'):
-	if(run): 
-		epoch += 1
-		step(ut_1, vt_1, ut, vt, Du, Dv, F, k, dt)
-		ut_1, vt_1 = ut, vt
-		if(epoch % 100 == 0):
-			t1 = time.time()
-			print("FPS : %i fps" % (100 / (t1 - t0)))
-			t0 = t1
-	cv2.imshow('u', ut)
-	cv2.imshow('v', vt)
-	key = cv2.waitKey(1) & 0xFF
 
-	if(key == ord('c')):
-		c = (random.randint(0, N-1), random.randint(0, N-1))
-		cv2.circle(ut_1, c , dN, 0, -1)
-	elif key == ord('s'):
-		run = not run
-		print("Running ? : " + str(run))
-	elif key == ord('i'):
-		init(ut_1, vt_1)
+
+if(__name__ == '__main__'):
+	mode = int(sys.argv[1])
+
+	model = Model('worms', N=128, mode=mode, measure_fps=True)
+	model.init()
+
+	while True:
+		model.step()
 
