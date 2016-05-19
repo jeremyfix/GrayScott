@@ -89,10 +89,12 @@ class Model:
 if(__name__ == '__main__'):
 	mode = int(sys.argv[1])
 
+        N = 1024
+
         if(mode <= 2):
-            model = Model('worms', N=128, mode=mode)
+            model = Model('worms', N=N, mode=mode)
         else:
-            model = libgrayscott.GrayScott('worms', 128)
+            model = libgrayscott.GrayScott('worms', N)
     
         model.init()
 
@@ -102,9 +104,9 @@ if(__name__ == '__main__'):
 	while True:
 		model.step()
                 epoch += 1
-                if(epoch % 100 == 0):
+                if(epoch % 500 == 0):
                     t1 = time.time()
-                    print("FPS : %f f/s" % (100 / (t1 - t0)))
+                    print("FPS : %f f/s" % (500 / (t1 - t0)))
                     t0 = t1
 
 
