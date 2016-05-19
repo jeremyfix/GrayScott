@@ -89,12 +89,13 @@ class Model:
 if(__name__ == '__main__'):
 	mode = int(sys.argv[1])
 
-        N = 1024
+        N = 256
+        pattern = 'worms'
 
         if(mode <= 2):
-            model = Model('worms', N=N, mode=mode)
+            model = Model(pattern, N=N, mode=mode)
         else:
-            model = libgrayscott.GrayScott('worms', N)
+            model = libgrayscott.GrayScott(pattern, N)
     
         model.init()
 
