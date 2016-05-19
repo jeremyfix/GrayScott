@@ -2,6 +2,7 @@ import cv2
 import sys
 import random
 import numpy as np
+import time
 
 import grayscott
 import libgrayscott
@@ -25,7 +26,9 @@ model.init()
 
 
 u = np.zeros((N, N))
+epoch = 0
 
+t0 = time.time()
 while key != ord('q'):
     if(run): 
         if(mode <= 2):
@@ -33,7 +36,11 @@ while key != ord('q'):
             u[:,:] = model.ut
         else:
             u = model.step()
-
+	epoch += 1
+	if(epoch % 200 == 0):
+		t1 = time.time()
+		print("FPS: %f fps" % (200 / (t1 - t0)))
+		t0 = t1
     cv2.imshow('u', u)
     #cv2.imshow('v', model.vt)
 

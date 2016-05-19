@@ -136,19 +136,21 @@ class GrayScott {
                 F = 0.0580;               
             }
             else if(param_name == std::string("spirals")) {
-                k = 0.0370;
-                F = 0.0060;
+                k = 0.050;
+                F = 0.018;
             }
+	    else if(param_name == std::string("uskate")) {
+		k = 0.06093;
+		F = 0.0620;
+	    }
             else {
                 k = 0.040;
                 F = 0.060;
             }
-
-            h = 1e-2;
-            Du = 2 * 1e-5 / (h*h);
-            Dv = 1e-5 / (h*h);
+            Du = 0.2;
+            Dv = 0.1;
             dt = 1.0;
-            noise = 0.1;
+            noise = 0.2;
 
             ut_1 = new double[N * N];
             std::fill(ut_1, ut_1 + N*N, 0.0);
@@ -180,15 +182,15 @@ class GrayScott {
         }
 
         void init(void) {
-            if(param_name == std::string("spirals")) {
-                double* ut_1_ptr = ut_1;
-                double* vt_1_ptr = vt_1;
-                for(unsigned int i = 0 ; i < N*N; ++i) {
-                    *(ut_1_ptr++) = std::rand() / double(RAND_MAX);
-                    *(vt_1_ptr++) = std::rand() / double(RAND_MAX);
-                }
-            }
-            else {
+//            if(param_name == std::string("spirals")) {
+//                double* ut_1_ptr = ut_1;
+//                double* vt_1_ptr = vt_1;
+//                for(unsigned int i = 0 ; i < N*N; ++i) {
+//                    *(ut_1_ptr++) = std::rand() / double(RAND_MAX);
+//                    *(vt_1_ptr++) = std::rand() / double(RAND_MAX);
+//                }
+//            }
+//            else {
                 double *ut_1_ptr, *vt_1_ptr;
 
                 std::fill(ut_1, ut_1 + N*N, 1.0);
@@ -214,7 +216,7 @@ class GrayScott {
                         *vt_1_ptr = 0.;
                 }
 
-            }
+           // }
         }
 
         PyObject* step(void) {
@@ -254,7 +256,7 @@ class GrayScott {
             vt = vt_1;
             vt_1 = tmp;
 
-            int dims[2];
+            npy_intp dims[2];
             dims[0] = N;
             dims[1] = N;
             return PyArray_SimpleNewFromData( 2, dims, NPY_DOUBLE, ut );
