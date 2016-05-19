@@ -6,9 +6,11 @@ import numpy as np
 import time
 import sys
 
+import libgrayscott
+
 class Model:
 
-	def __init__(self, param_name, N, mode, measure_fps):
+	def __init__(self, param_name, N, mode):
 		self.param_name = param_name
 		if(self.param_name == 'solitons'):
 			self.k = 0.056
@@ -46,10 +48,6 @@ class Model:
 		elif(self.mode == 1):
 			self.stencil = np.array([[0, 1., 0], [1., -4., 1.], [0, 1., 0]], dtype=float)
 
-		self.measure_fps = measure_fps
-		if(measure_fps):
-			self.t0 = time.time()
-		self.epoch = 0
 
 	def init(self):
 		if(self.param_name == 'spirals'):
@@ -84,22 +82,30 @@ class Model:
 		self.ut[:,:] = self.ut_1 + self.dt * (self.Du * lu - uvv + self.F*(1-self.ut_1))
 		self.vt[:,:] = self.vt_1 + self.dt * (self.Dv * lv + uvv - (self.F + self.k) * self.vt_1)
 
-		self.epoch += 1
 		self.ut_1, self.vt_1  = self.ut, self.vt
-
-		if(self.measure_fps and (self.epoch % 100 == 0)):
-			self.t1 = time.time()
-			print("FPS : %f f/s" % (100 / (self.t1 - self.t0)))
-			self.t0 = self.t1
 
 
 
 if(__name__ == '__main__'):
 	mode = int(sys.argv[1])
 
-	model = Model('worms', N=128, mode=mode, measure_fps=True)
-	model.init()
+        if(mode <= 2):
+            model = Model('worms', N=128, mode=mode)
+        else:
+            model = libgrayscott.GrayScott('worms', 128)
+    
+        model.init()
+
+        epoch = 0
+        t0 = time.time()
 
 	while True:
 		model.step()
+                epoch += 1
+                if(epoch % 100 == 0):
+                    t1 = time.time()
+                    print("FPS : %f f/s" % (100 / (t1 - t0)))
+                    t0 = t1
+
+
 
