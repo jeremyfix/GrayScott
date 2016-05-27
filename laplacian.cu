@@ -8,6 +8,8 @@
 
 __global__
 void gpu_laplacian(unsigned int width, unsigned int height, float* values, float* laplacian) {
+
+
 }
 
 __host__
@@ -124,7 +126,7 @@ float diffNorm(float* v1, float* v2, unsigned int N) {
   float* v1ptr = v1;
   float* v2ptr = v2;
   float d;
-  for(unsigned int i = 0 ; i < N*N; ++i, ++v1ptr, ++v2ptr) {
+  for(unsigned int i = 0 ; i < N; ++i, ++v1ptr, ++v2ptr) {
     d = (*v1ptr) - (*v2ptr);
     res += d*d;
   }
@@ -173,8 +175,10 @@ int main(int argc, char * argv[]) {
   cudaMemcpy2D(dI, pitch_dI, I, width*sizeof(float), width*sizeof(float), height, cudaMemcpyHostToDevice);
   
   // Call the kernel
-  int threadsPerBlock = 256;
   int blocksPerGrid = 1;
+  dim3 threadsPerBlock(256, 1, 1);
+   
+
   gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(width, height, dI, dlgpu);
   
   // Get the result
