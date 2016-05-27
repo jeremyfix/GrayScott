@@ -296,28 +296,30 @@ int main(int argc, char * argv[]) {
   cudaMallocPitch(&dI, &pitch_dI, width*sizeof(float), height);
   cudaMallocPitch(&dlgpu, &pitch_dlgpu, width*sizeof(float), height);
   
-  std::chrono::time_point<std::chrono::system_clock> start_gpu, end_gpu;
-  start_gpu = std::chrono::system_clock::now();
-  
   // Copy the input to the GPU
   //cudaMemcpy(dI, I, N*N*sizeof(float), cudaMemcpyHostToDevice);
-  cudaMemcpy2D(dI, pitch_dI, I, width*sizeof(float), width*sizeof(float), height, cudaMemcpyHostToDevice);
+  //cudaMemcpy2D(dI, pitch_dI, I, width*sizeof(float), width*sizeof(float), height, cudaMemcpyHostToDevice);
   
   // Call the kernel
   int blocksPerGrid = 1;
   //dim3 threadsPerBlock(HEIGHT, 1, 1);
 	int threadsPerBlock = HEIGHT;
+	std::chrono::time_point<std::chrono::system_clock> start_gpu, end_gpu;
+  start_gpu = std::chrono::system_clock::now();
    
-
-  gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(dI, pitch_dI, dlgpu, pitch_dlgpu);
+	cudaMemcpy2D(dI, pitch_dI, I, width*sizeof(float), width*sizeof(float), height, cudaMemcpyHostToDevice);
+  for(unsigned int i = 0 ; i < nbcalls; ++i) {
+		gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(dI, pitch_dI, dlgpu, pitch_dlgpu);
+	}
   
-  // Get the result
+	cudaMemcpy2D(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
+	end_gpu = std::chrono::system_clock::now();
+	int elapsed_gpu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_gpu-start_gpu).count();
+  printf("GPU elapsed : %f ms per call \n", ((float)elapsed_gpu_ms)/nbcalls);
+
+	// Get the result
   //cudaMemcpy(lgpu, dlgpu, N*N*sizeof(float), cudaMemcpyDeviceToHost);
   cudaMemcpy2D(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
-  
-  end_gpu = std::chrono::system_clock::now();
-  int elapsed_gpu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_gpu-start_gpu).count();
-  printf("GPU elapsed : %f ms per call \n", ((float)elapsed_gpu_ms)/nbcalls);
   
   //********** Comparison *************//
   printf("Difference : %f \n", diffNorm(lcpu, lgpu, width*height));
