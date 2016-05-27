@@ -1,13 +1,123 @@
 // nvcc -o laplacian laplacian.cu -std=c++11
 // nvcc -o laplacian laplacian.cu -std=c++11 -O3 -g -D_FORCE_INLINES
-#include <stdio.h>
+#include <cstdio>
+#include <iostream>
 #include <cstdlib>
 #include <chrono>
 #include <cmath>
 #include <cstring>
 
+#define WIDTH 256 
+#define HEIGHT 256 
+
+__device__
+float* get_adr(float * base, size_t pitch, unsigned int row, unsigned int col) {
+	return (float*)((char*) base + row * pitch) + col;
+}
+
 __global__
-void gpu_laplacian(unsigned int width, unsigned int height, float* values, float* laplacian) {
+void gpu_laplacian( float* I, size_t pitch_I, float* laplacian,  size_t pitch_L) {
+	// We suppose that width = height = number of threads
+
+	float *vN_ptr, *vE_ptr, *vS_ptr, *vW_ptr;
+	float *l_ptr,  *I_ptr;
+
+	switch(threadIdx.x){
+		case(0) :
+			// Handles the first row
+			// The first element
+			l_ptr  = get_adr(laplacian, pitch_L, 0, 0);
+			I_ptr  = get_adr(I, pitch_I, 0, 0) ;
+			vN_ptr = get_adr(I, pitch_I, HEIGHT-1, 0);//(float*)((char*)I + (HEIGHT-1)*pitch_I);
+			vE_ptr = get_adr(I, pitch_I, 0, 1);
+			vS_ptr = get_adr(I, pitch_I, 1, 0);
+			vW_ptr = get_adr(I, pitch_I, 0, WIDTH-1);
+			*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4.);
+
+			// The elements excluding the first and last
+			l_ptr = get_adr(laplacian, pitch_L, 0, 1);
+			I_ptr = get_adr(I, pitch_I, 0, 1);
+			vN_ptr = get_adr(I, pitch_I, HEIGHT-1, 1);
+			vE_ptr = get_adr(I, pitch_I, 0, 2);
+			vS_ptr = get_adr(I, pitch_I, 1, 1);
+			vW_ptr = get_adr(I, pitch_I, 0, 0);
+			for(unsigned int i = 1 ; i < WIDTH - 1; ++i,  ++I_ptr, ++l_ptr, ++vN_ptr, ++vE_ptr, ++vS_ptr, ++vW_ptr) 
+				*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4);
+			
+			// The last element
+			l_ptr = get_adr(laplacian, pitch_L, 0, WIDTH-1);
+			I_ptr = get_adr(I, pitch_I, 0, WIDTH-1);
+			vN_ptr = get_adr(I, pitch_I, HEIGHT-1, WIDTH-1);
+			vE_ptr = get_adr(I, pitch_I, 0, 0);
+			vS_ptr = get_adr(I, pitch_I, 1, WIDTH-1);
+			vW_ptr = get_adr(I, pitch_I, 0, WIDTH-2);
+			*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4.);
+
+			break;
+		case (HEIGHT-1):
+			// Handles the last row
+			// The first element
+			l_ptr  = get_adr(laplacian, pitch_L, HEIGHT-1, 0);
+			I_ptr  = get_adr(I, pitch_I, HEIGHT-1, 0) ;
+			vN_ptr = get_adr(I, pitch_I, HEIGHT-2, 0);//(float*)((char*)I + (HEIGHT-1)*pitch_I);
+			vE_ptr = get_adr(I, pitch_I, HEIGHT-1, 1);
+			vS_ptr = get_adr(I, pitch_I, 0, 0);
+			vW_ptr = get_adr(I, pitch_I, HEIGHT-1, WIDTH-1);
+			*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4.);
+
+			// The elements excluding the first and last
+			l_ptr = get_adr(laplacian, pitch_L, HEIGHT-1, 1);
+			I_ptr = get_adr(I, pitch_I, HEIGHT-1, 1);
+			vN_ptr = get_adr(I, pitch_I, HEIGHT-2, 1);
+			vE_ptr = get_adr(I, pitch_I, HEIGHT-1, 2);
+			vS_ptr = get_adr(I, pitch_I, 0, 1);
+			vW_ptr = get_adr(I, pitch_I, HEIGHT-1, 0);
+			for(unsigned int i = 1 ; i < WIDTH - 1; ++i,  ++I_ptr, ++l_ptr, ++vN_ptr, ++vE_ptr, ++vS_ptr, ++vW_ptr) 
+				*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4);
+			
+			// The last element
+			l_ptr = get_adr(laplacian, pitch_L, HEIGHT-1, WIDTH-1);
+			I_ptr = get_adr(I, pitch_I, HEIGHT-1, WIDTH-1);
+			vN_ptr = get_adr(I, pitch_I, HEIGHT-2, WIDTH-1);
+			vE_ptr = get_adr(I, pitch_I, HEIGHT-1, 0);
+			vS_ptr = get_adr(I, pitch_I, 0, WIDTH-1);
+			vW_ptr = get_adr(I, pitch_I, HEIGHT-1, WIDTH-2);
+			*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4.);
+
+			break;
+		default:
+			// Handles the rows excluding the first and the last
+			unsigned int row_id = threadIdx.x;
+			// The first element
+			l_ptr  = get_adr(laplacian, pitch_L, row_id, 0);
+			I_ptr  = get_adr(I, pitch_I, row_id, 0) ;
+			vN_ptr = get_adr(I, pitch_I, row_id-1, 0);
+			vE_ptr = get_adr(I, pitch_I, row_id, 1);
+			vS_ptr = get_adr(I, pitch_I, row_id+1, 0);
+			vW_ptr = get_adr(I, pitch_I, row_id, WIDTH-1);
+			*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4.);
+
+			// The elements excluding the first and last
+			l_ptr = get_adr(laplacian, pitch_L, row_id, 1);
+			I_ptr = get_adr(I, pitch_I, row_id, 1);
+			vN_ptr = get_adr(I, pitch_I, row_id-1, 1);
+			vE_ptr = get_adr(I, pitch_I, row_id, 2);
+			vS_ptr = get_adr(I, pitch_I, row_id+1, 1);
+			vW_ptr = get_adr(I, pitch_I, row_id, 0);
+			for(unsigned int i = 1 ; i < WIDTH - 1; ++i,  ++I_ptr, ++l_ptr, ++vN_ptr, ++vE_ptr, ++vS_ptr, ++vW_ptr) 
+				*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4);
+			
+			// The last element
+			l_ptr = get_adr(laplacian, pitch_L, row_id, WIDTH-1);
+			I_ptr = get_adr(I, pitch_I, row_id, WIDTH-1);
+			vN_ptr = get_adr(I, pitch_I, row_id-1, WIDTH-1);
+			vE_ptr = get_adr(I, pitch_I, row_id, 0);
+			vS_ptr = get_adr(I, pitch_I, row_id+1, WIDTH-1);
+			vW_ptr = get_adr(I, pitch_I, row_id, WIDTH-2);
+			*l_ptr = (*vN_ptr + *vE_ptr + *vS_ptr + *vW_ptr) - ((*I_ptr) * 4.);
+
+		break;
+	}
 
 
 }
@@ -130,14 +240,33 @@ float diffNorm(float* v1, float* v2, unsigned int N) {
     d = (*v1ptr) - (*v2ptr);
     res += d*d;
   }
-  return sqrt(d);
+  return sqrt(res);
+}
+
+__host__
+void printArray(float * v,  unsigned int i) {
+	float* vptr = v + i * WIDTH;
+	for(unsigned int j = 0 ; j < WIDTH; ++j,  ++vptr) 
+		printf("%f ", (*vptr));
+	printf("\n");
+	
+}
+
+__host__
+void printArray(float * v) {
+	float* vptr = v;
+	for(unsigned int i = 0 ; i < HEIGHT; ++i) {
+		for(unsigned int j = 0 ; j < WIDTH; ++j,  ++vptr) 
+			printf("%f ", (*vptr));
+		printf("\n");
+	}
 }
 
 __host__
 int main(int argc, char * argv[]) {
 
-  unsigned int width = 256;
-  unsigned int height = 256;
+  unsigned int width = WIDTH;
+  unsigned int height = HEIGHT;
   unsigned int nbcalls = 500;
 
   float *I, *lcpu, *lgpu, *dI, *dlgpu;
@@ -176,14 +305,15 @@ int main(int argc, char * argv[]) {
   
   // Call the kernel
   int blocksPerGrid = 1;
-  dim3 threadsPerBlock(256, 1, 1);
+  //dim3 threadsPerBlock(HEIGHT, 1, 1);
+	int threadsPerBlock = HEIGHT;
    
 
-  gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(width, height, dI, dlgpu);
+  gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(dI, pitch_dI, dlgpu, pitch_dlgpu);
   
   // Get the result
   //cudaMemcpy(lgpu, dlgpu, N*N*sizeof(float), cudaMemcpyDeviceToHost);
-  cudaMemcpy2D(lgpu, width*sizeof(float), dlgpu, width*sizeof(float), width*sizeof(float), height, cudaMemcpyDeviceToHost);
+  cudaMemcpy2D(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
   
   end_gpu = std::chrono::system_clock::now();
   int elapsed_gpu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_gpu-start_gpu).count();
@@ -191,7 +321,14 @@ int main(int argc, char * argv[]) {
   
   //********** Comparison *************//
   printf("Difference : %f \n", diffNorm(lcpu, lgpu, width*height));
-  
+
+	// For debug,  print some elements of the array
+	//printArray(I);
+	//printf("\n");
+	//printArray(lcpu);
+	//printf("\n");
+	//printArray(lgpu);
+
   //***********************************//
   // Free the device memory
   cudaFree(dI);
