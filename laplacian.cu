@@ -7,8 +7,8 @@
 #include <cmath>
 #include <cstring>
 
-#define WIDTH 256 
-#define HEIGHT 256 
+#define WIDTH 5 
+#define HEIGHT 5 
 
 __device__
 float* get_adr(float * base, size_t pitch, unsigned int row, unsigned int col) {
@@ -269,7 +269,7 @@ int main(int argc, char * argv[]) {
   unsigned int height = HEIGHT;
   unsigned int nbcalls = 500;
 
-  float *I, *lcpu, *lgpu, *dI, *dlgpu;
+  float *I, *lcpu, *lgpu, *dI, *dlgpu, *hI, *hlgpu;
   I = (float*) malloc(width*height*sizeof(float));
   lcpu = (float*) malloc(width*height*sizeof(float));
   lgpu = (float*) malloc(width*height*sizeof(float));
@@ -293,13 +293,20 @@ int main(int argc, char * argv[]) {
   //************* GPU *****************//
   
   size_t pitch_dI, pitch_dlgpu;
-	cudaMallocHost((void**)dI,  height * width * sizeof(float));
-	cudaMallocHost((void**)dlgpu,  height * width * sizeof(float));
+	pitch_dI = width * sizeof(float);
+	pitch_dlgpu = width * sizeof(float);
+	cudaMallocHost((void**)&hI,  height * width * sizeof(float));
+	cudaMallocHost((void**)&hlgpu,  height * width * sizeof(float));
+
+	memcpy(hI, I, height*width*sizeof(float));
   
-  // Copy the input to the GPU
-  //cudaMemcpy(dI, I, N*N*sizeof(float), cudaMemcpyHostToDevice);
-  //cudaMemcpy2D(dI, pitch_dI, I, width*sizeof(float), width*sizeof(float), height, cudaMemcpyHostToDevice);
-  
+	printf("I : \n");
+	printArray(I);
+
+	printf("hI : \n");
+	printArray(hI); 
+ 	
+
   // Call the kernel
   int blocksPerGrid = 1;
   //dim3 threadsPerBlock(HEIGHT, 1, 1);
@@ -307,19 +314,20 @@ int main(int argc, char * argv[]) {
 	std::chrono::time_point<std::chrono::system_clock> start_gpu, end_gpu;
   start_gpu = std::chrono::system_clock::now();
    
-	cudaMemcpy2D(dI, pitch_dI, I, width*sizeof(float), width*sizeof(float), height, cudaMemcpyHostToDevice);
+	cudaMemcpy(dI, hI, height*width*sizeof(float), cudaMemcpyHostToDevice);
   for(unsigned int i = 0 ; i < nbcalls; ++i) {
 		gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(dI, pitch_dI, dlgpu, pitch_dlgpu);
 	}
   
-	cudaMemcpy2D(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
+	cudaMemcpy(hlgpu, dlgpu, height*width*sizeof(float), cudaMemcpyDeviceToHost);
+	
 	end_gpu = std::chrono::system_clock::now();
 	int elapsed_gpu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_gpu-start_gpu).count();
   printf("GPU elapsed : %f ms per call \n", ((float)elapsed_gpu_ms)/nbcalls);
 
 	// Get the result
-  //cudaMemcpy(lgpu, dlgpu, N*N*sizeof(float), cudaMemcpyDeviceToHost);
-  cudaMemcpy2D(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
+  cudaMemcpy(lgpu, dlgpu, width*height*sizeof(float), cudaMemcpyDeviceToHost);
+  //memcpy(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
   
   //********** Comparison *************//
   printf("Difference : %f \n", diffNorm(lcpu, lgpu, width*height));
