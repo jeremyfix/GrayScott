@@ -7,8 +7,8 @@
 #include <cmath>
 #include <cstring>
 
-#define WIDTH 5 
-#define HEIGHT 5 
+#define WIDTH 256
+#define HEIGHT 256 
 
 __device__
 float* get_adr(float * base, size_t pitch, unsigned int row, unsigned int col) {
@@ -295,17 +295,12 @@ int main(int argc, char * argv[]) {
   size_t pitch_dI, pitch_dlgpu;
 	pitch_dI = width * sizeof(float);
 	pitch_dlgpu = width * sizeof(float);
+	cudaMalloc((void**)&dI, height*width*sizeof(float));
+	cudaMalloc((void**)&dlgpu, height*width*sizeof(float));
 	cudaMallocHost((void**)&hI,  height * width * sizeof(float));
 	cudaMallocHost((void**)&hlgpu,  height * width * sizeof(float));
 
 	memcpy(hI, I, height*width*sizeof(float));
-  
-	printf("I : \n");
-	printArray(I);
-
-	printf("hI : \n");
-	printArray(hI); 
- 	
 
   // Call the kernel
   int blocksPerGrid = 1;
@@ -318,31 +313,21 @@ int main(int argc, char * argv[]) {
   for(unsigned int i = 0 ; i < nbcalls; ++i) {
 		gpu_laplacian<<<blocksPerGrid, threadsPerBlock>>>(dI, pitch_dI, dlgpu, pitch_dlgpu);
 	}
-  
 	cudaMemcpy(hlgpu, dlgpu, height*width*sizeof(float), cudaMemcpyDeviceToHost);
 	
 	end_gpu = std::chrono::system_clock::now();
 	int elapsed_gpu_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_gpu-start_gpu).count();
   printf("GPU elapsed : %f ms per call \n", ((float)elapsed_gpu_ms)/nbcalls);
 
-	// Get the result
-  cudaMemcpy(lgpu, dlgpu, width*height*sizeof(float), cudaMemcpyDeviceToHost);
-  //memcpy(lgpu, width*sizeof(float), dlgpu, pitch_dlgpu, width*sizeof(float), height, cudaMemcpyDeviceToHost);
-  
   //********** Comparison *************//
-  printf("Difference : %f \n", diffNorm(lcpu, lgpu, width*height));
-
-	// For debug,  print some elements of the array
-	//printArray(I);
-	//printf("\n");
-	//printArray(lcpu);
-	//printf("\n");
-	//printArray(lgpu);
+  printf("Difference : %f \n", diffNorm(lcpu, hlgpu, width*height));
 
   //***********************************//
   // Free the device memory
   cudaFree(dI);
   cudaFree(dlgpu);
+	cudaFreeHost(hI);
+	cudaFreeHost(hlgpu);
 
   // Free the host memory
   delete[] I;
