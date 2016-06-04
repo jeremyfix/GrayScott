@@ -293,8 +293,8 @@ int main(int argc, char * argv[]) {
   //************* GPU *****************//
   
   size_t pitch_dI, pitch_dlgpu;
-  cudaMallocPitch(&dI, &pitch_dI, width*sizeof(float), height);
-  cudaMallocPitch(&dlgpu, &pitch_dlgpu, width*sizeof(float), height);
+	cudaMallocHost((void**)dI,  height * width * sizeof(float));
+	cudaMallocHost((void**)dlgpu,  height * width * sizeof(float));
   
   // Copy the input to the GPU
   //cudaMemcpy(dI, I, N*N*sizeof(float), cudaMemcpyHostToDevice);
