@@ -7,6 +7,16 @@ import time
 import grayscott
 import libgrayscott
 
+if(len(sys.argv) <= 1):
+    print("Usage : %s mode "% sys.argv[0])
+    print("With mode : ")
+    print("   0 : spatial model with FFT convolution in python") # 100 fps
+    print("   1 : spatial model with ndimage.convolve in python") # 165 fps
+    print("   2 : spatial model with ndimage.laplace in python") # 150 fps
+    print("   3 : spatial model with fast laplacian in C++") # 400 fps
+    print("   4 : spectral model in python")
+    sys.exit(-1)
+
 cv2.namedWindow('u')
 #cv2.namedWindow('v')
 
@@ -31,11 +41,8 @@ epoch = 0
 t0 = time.time()
 while key != ord('q'):
     if(run): 
-        if(mode <= 2):
-            model.step()	
-            u[:,:] = model.ut
-        else:
-            u = model.step()
+        model.step()
+        u[:,:] = model.get_ut()
 	epoch += 1
 	if(epoch % 200 == 0):
 		t1 = time.time()

@@ -219,7 +219,7 @@ class GrayScott {
            // }
         }
 
-        PyObject* step(void) {
+        void step(void) {
             // The GrayScott equations read :
             // du/dt = Du Laplacian(u) - u * v^2 + F * (1 - u)
             // dv/dt = Dv Laplacian(v) + u * v^2 - (F + k) * v
@@ -255,12 +255,14 @@ class GrayScott {
             tmp = vt;
             vt = vt_1;
             vt_1 = tmp;
-
-            npy_intp dims[2];
-            dims[0] = N;
-            dims[1] = N;
-            return PyArray_SimpleNewFromData( 2, dims, NPY_DOUBLE, ut );
         }
+
+  PyObject* get_ut(void) {
+    npy_intp dims[2];
+    dims[0] = N;
+    dims[1] = N;
+    return PyArray_SimpleNewFromData( 2, dims, NPY_DOUBLE, ut );
+  }
 
 
 };
@@ -276,6 +278,7 @@ BOOST_PYTHON_MODULE(libgrayscott) {
 
     boost::python::class_<GrayScott>("GrayScott", boost::python::init<std::string, unsigned int>())
         .def("init", &GrayScott::init)
-        .def("step", &GrayScott::step);
+        .def("step", &GrayScott::step)
+        .def("get_ut", &GrayScott::get_ut);
 }
 
