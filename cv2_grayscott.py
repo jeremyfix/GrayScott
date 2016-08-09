@@ -38,13 +38,16 @@ key = 0
 run = False
 
 mode = int(sys.argv[1])
-N = 256
-pattern = 'solitons'
+#
+d = 1.0 # The width of the domain
+N = 100 # The size of the lattice
+dt = 1.0 # the time step
+pattern = 'worms'
 
 if(mode <= 2):
-    model = grayscott.Model(pattern, N=N, mode=mode)
+    model = grayscott.Model(pattern, N=N, mode=mode, d=d, dt=dt)
 else:
-    model = libgrayscott.GrayScott(pattern, N)
+    model = libgrayscott.GrayScott(pattern, N, d, dt)
 
 model.init()
 

@@ -50,7 +50,7 @@ class SpectralModel:
         
 class Model:
 
-	def __init__(self, param_name, N, mode):
+	def __init__(self, param_name, N, mode,d=1,dt=0.1):
 		self.param_name = param_name
 		if(self.param_name == 'solitons'):
 			self.k = 0.056
@@ -68,12 +68,12 @@ class Model:
 			self.k = 0.040
 			self.F = 0.060
 		self.N = N
-		self.h = 1e-2		
+		self.h = d/N		
 		self.Du = 2 * 1e-5 / self.h**2
 		self.Dv = 1e-5 / self.h**2
-		self.dt = 1.0
+		self.dt = dt
 		self.noise = 0.2
-
+                
 		self.ut_1 = np.zeros((self.N, self.N), dtype=float)
 		self.vt_1 = np.zeros((self.N, self.N), dtype=float)
 		self.ut = np.zeros((self.N, self.N), dtype=float)
