@@ -18,17 +18,16 @@ class SpectralModel:
 			self.k = 0.0630
 			self.F = 0.0580
 		elif(self.param_name == 'spirals'):			
-			self.k = 0.0370
-			self.F = 0.0060
+			self.k = 0.050
+			self.F = 0.018
 		else:
 			self.k = 0.040
 			self.F = 0.060
 		self.N = N
-		self.h = 1e-2		
-		self.Du = 2 * 1e-5 / self.h**2
-		self.Dv = 1e-5 / self.h**2
+		self.Du = 0.2
+		self.Dv = 0.1
 		self.dt = 1.0
-		self.noise = 0.1
+		self.noise = 0.2
 
 	def init(self):
 		if(self.param_name == 'spirals'):
@@ -60,8 +59,11 @@ class Model:
 			self.k = 0.0630
 			self.F = 0.0580
 		elif(self.param_name == 'spirals'):			
-			self.k = 0.0370
-			self.F = 0.0060
+			self.k = 0.0500
+			self.F = 0.0180
+                elif(self.param_name == 'uskate'):
+                        self.k = 0.06093
+                        self.F = 0.0620
 		else:
 			self.k = 0.040
 			self.F = 0.060
@@ -70,7 +72,7 @@ class Model:
 		self.Du = 2 * 1e-5 / self.h**2
 		self.Dv = 1e-5 / self.h**2
 		self.dt = 1.0
-		self.noise = 0.1
+		self.noise = 0.2
 
 		self.ut_1 = np.zeros((self.N, self.N), dtype=float)
 		self.vt_1 = np.zeros((self.N, self.N), dtype=float)
@@ -91,20 +93,16 @@ class Model:
 
 
 	def init(self):
-		if(self.param_name == 'spirals'):
-			self.ut_1[:,:] = np.random.random((self.N, self.N))
-			self.vt_1[:,:] = np.random.random((self.N, self.N))
-		else:
-			dN = self.N/4
-			self.ut_1[:,:] = 1
-			self.ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
-			self.ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
-			self.ut_1[self.ut_1 <= 0] = 0
-
-			self.vt_1[:,:] = 0
-			self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
-			self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
-			self.vt_1[self.vt_1 <= 0] = 0
+		dN = self.N/4
+		self.ut_1[:,:] = 1
+		self.ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
+		self.ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+		self.ut_1[self.ut_1 <= 0] = 0
+                
+		self.vt_1[:,:] = 0
+		self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
+		self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+		self.vt_1[self.vt_1 <= 0] = 0
 
 	def laplacian(self, x):
 		if(self.mode == 0):

@@ -1,3 +1,11 @@
+# coding: utf-8
+# Simulation of the gray scott reaction diffusion system.
+#      /  
+#      |  ∂ₜu(x,t) = Dᵤ ∇²u(x,t) - u(x,t) v²(x,t) + F(1- u(x,t))
+#      |  ∂ₜv(x,t) = Dᵥ ∇²v(x,t) + u(x,t) v²(x,t) - (F + k) v(x,t)
+#      \
+
+
 import cv2
 import sys
 import random
@@ -10,13 +18,19 @@ import libgrayscott
 if(len(sys.argv) <= 1):
     print("Usage : %s mode "% sys.argv[0])
     print("With mode : ")
-    print("   0 : spatial model with FFT convolution in python") # 100 fps
-    print("   1 : spatial model with ndimage.convolve in python") # 165 fps
-    print("   2 : spatial model with ndimage.laplace in python") # 150 fps
-    print("   3 : spatial model with fast laplacian in C++") # 400 fps
-    print("   4 : spectral model in python")
+    print("   0 : spatial model with FFT convolution in python, forward euler") # 100 fps
+    print("   1 : spatial model with ndimage.convolve in python, forward euler") # 165 fps
+    print("   2 : spatial model with ndimage.laplace in python, forward euler") # 150 fps
+    print("   3 : spatial model with fast laplacian in C++, forward euler") # 400 fps
+    print("   4 : spectral model in python using ETDRK4")
     sys.exit(-1)
 
+print(" Press : ")
+print("   s : start/pause")
+print("   i : reinitialize the concentrations")
+print("   q : quit")
+print("   c : erase the reactant v in a randomly chosen circular patch")
+    
 cv2.namedWindow('u')
 #cv2.namedWindow('v')
 
@@ -25,7 +39,7 @@ run = False
 
 mode = int(sys.argv[1])
 N = 256
-pattern = 'worms'
+pattern = 'solitons'
 
 if(mode <= 2):
     model = grayscott.Model(pattern, N=N, mode=mode)

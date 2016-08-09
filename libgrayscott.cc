@@ -181,43 +181,33 @@ class GrayScott {
             delete[] vt;
         }
 
-        void init(void) {
-//            if(param_name == std::string("spirals")) {
-//                double* ut_1_ptr = ut_1;
-//                double* vt_1_ptr = vt_1;
-//                for(unsigned int i = 0 ; i < N*N; ++i) {
-//                    *(ut_1_ptr++) = std::rand() / double(RAND_MAX);
-//                    *(vt_1_ptr++) = std::rand() / double(RAND_MAX);
-//                }
-//            }
-//            else {
-                double *ut_1_ptr, *vt_1_ptr;
+  void init(void) {
+    double *ut_1_ptr, *vt_1_ptr;
 
-                std::fill(ut_1, ut_1 + N*N, 1.0);
-                std::fill(vt_1, vt_1 + N*N, 0.0);
+    std::fill(ut_1, ut_1 + N*N, 1.0);
+    std::fill(vt_1, vt_1 + N*N, 0.0);
 
-                int dN = N/4;
+    int dN = N/4;
 
-                for(int i = -dN/2 ; i <= dN/2 ; ++i) {
-                    for(int j = -dN/2 ; j <= dN/2; ++j) {
-                        ut_1[(N/2+i)*N + (N/2+j)] = 0.5;
-                        vt_1[(N/2+i)*N + (N/2+j)] = 0.25;
-                    }               
-                }
+    for(int i = -dN/2 ; i <= dN/2 ; ++i) {
+      for(int j = -dN/2 ; j <= dN/2; ++j) {
+	ut_1[(N/2+i)*N + (N/2+j)] = 0.5;
+	vt_1[(N/2+i)*N + (N/2+j)] = 0.25;
+      }               
+    }
 
-                ut_1_ptr = ut_1;
-                vt_1_ptr = vt_1;
-                for(unsigned int i = 0 ; i < N*N; ++i, ++ut_1_ptr, ++vt_1_ptr) {
-                    *ut_1_ptr += noise * (2.0 * (std::rand() / double(RAND_MAX)) - 1.);
-                    if(*ut_1_ptr <= 0.)
-                        *ut_1_ptr = 0.;
-                    *vt_1_ptr += noise * (2.0 * (std::rand() / double(RAND_MAX)) - 1.);
-                    if(*vt_1_ptr <= 0.)
-                        *vt_1_ptr = 0.;
-                }
+    ut_1_ptr = ut_1;
+    vt_1_ptr = vt_1;
+    for(unsigned int i = 0 ; i < N*N; ++i, ++ut_1_ptr, ++vt_1_ptr) {
+      *ut_1_ptr += noise * (2.0 * (std::rand() / double(RAND_MAX)) - 1.);
+      if(*ut_1_ptr <= 0.)
+	*ut_1_ptr = 0.;
+      *vt_1_ptr += noise * (2.0 * (std::rand() / double(RAND_MAX)) - 1.);
+      if(*vt_1_ptr <= 0.)
+	*vt_1_ptr = 0.;
+    }
 
-           // }
-        }
+  }
 
         void step(void) {
             // The GrayScott equations read :
