@@ -8,6 +8,47 @@ import sys
 
 import libgrayscott
 
+class SpectralModel:
+        def __init__(self, param_name, N):
+		self.param_name = param_name
+                if(self.param_name == 'solitons'):
+			self.k = 0.056
+			self.F = 0.020
+ 		elif(self.param_name == 'worms'):
+			self.k = 0.0630
+			self.F = 0.0580
+		elif(self.param_name == 'spirals'):			
+			self.k = 0.0370
+			self.F = 0.0060
+		else:
+			self.k = 0.040
+			self.F = 0.060
+		self.N = N
+		self.h = 1e-2		
+		self.Du = 2 * 1e-5 / self.h**2
+		self.Dv = 1e-5 / self.h**2
+		self.dt = 1.0
+		self.noise = 0.1
+
+	def init(self):
+		if(self.param_name == 'spirals'):
+			self.ut_1[:,:] = np.random.random((self.N, self.N))
+			self.vt_1[:,:] = np.random.random((self.N, self.N))
+		else:
+			dN = self.N/4
+			self.ut_1[:,:] = 1
+			self.ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
+			self.ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+			self.ut_1[self.ut_1 <= 0] = 0
+
+			self.vt_1[:,:] = 0
+			self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
+			self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+			self.vt_1[self.vt_1 <= 0] = 0
+
+        def step(self):
+                pass
+        
 class Model:
 
 	def __init__(self, param_name, N, mode):
@@ -73,7 +114,8 @@ class Model:
 		elif(self.mode == 2):
 			return scipy.ndimage.laplace(x, mode='wrap')
 
-
+        def get_ut(self):
+                return self.ut
 
 	def step(self):
 		uvv = self.ut_1 * self.vt_1**2
