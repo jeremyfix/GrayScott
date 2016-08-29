@@ -5,5 +5,9 @@ http://cams.ehess.fr/docannexe.php?id=1191 ?
 Solving reaction diffusion equations 10 times faster, Aly Khan Kassam
 Fourth-order time stepping for stiff PDEs : Kassam
 
+
+Spectral methods for PDE, Bruno Costa
+http://www.dmat.ufpe.br/CUBO/files/6_4_2004.pdf
+
 A more extensive review of techniques for efficiently solving Reaction diffusion systems is given by :
 https://arxiv.org/pdf/1604.08900.pdf
