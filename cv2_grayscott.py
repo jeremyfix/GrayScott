@@ -30,6 +30,7 @@ print("   s : start/pause")
 print("   i : reinitialize the concentrations")
 print("   q : quit")
 print("   c : erase the reactant v in a randomly chosen circular patch")
+print("   p : save the current u potential")
     
 cv2.namedWindow('u')
 #cv2.namedWindow('v')
@@ -56,6 +57,7 @@ u = np.zeros((N, N))
 epoch = 0
 
 t0 = time.time()
+frame_id = 0
 while key != ord('q'):
     if(run): 
         model.step()
@@ -78,4 +80,7 @@ while key != ord('q'):
         print("Running ? : " + str(run))
     elif key == ord('i'):
         model.init()
-
+    elif key == ord('p'):
+        print("Saving u-%05d.png" % frame_id)
+        cv2.imwrite("u-%05d.png" % frame_id, model.get_ut())
+        frame_id += 1
