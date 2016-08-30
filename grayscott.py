@@ -14,14 +14,14 @@ We consider a spatial domain of size d × d, with N × N samples
 
 Expressed in the spectral domain, the system we solve is 
 
- ∂ₜ U [k₁,k₂] = -[Dᵤ ( (2πk₁/d)^2 + (2πk₂/d)^2)] U[k₁,k₂] - TF[TF^-1(U) (TF^-1(V))^2] + F δ_{k₁,k₂} - F U[k₁,k₂] 
+ ∂ₜ U [k₁,k₂] = -[Dᵤ ( (2πk₁/d)^2 + (2πk₂/d)^2)] U[k₁,k₂] - TF[TF^-1(U) (TF^-1(V))^2] + F N^2 δ_{k₁,k₂} - F U[k₁,k₂] 
  ∂ₜ V [k₁,k₂] = -[Dᵥ ( (2πk₁/d)^2 + (2πk₂/d)^2)] V[k₁,k₂] + TF[TF^-1(U) (TF^-1(V))^2] - (F + k) V[k₁,k₂]
 
 with U = TF(u) , V = TF(v)
 
 If we decompose the linear and non-linear parts of the equations, following the notations of "Fourth order time-stepping for stiff PDEs, the system reads:
 
- ∂ₜ U[k₁, k₂] = Lᵤ U[k₁,k₂] + Nᵤ(U[k₁,k₂], V[k₁,k₂]) + F δ_{k₁,k₂}
+ ∂ₜ U[k₁, k₂] = Lᵤ U[k₁,k₂] + Nᵤ(U[k₁,k₂], V[k₁,k₂]) + F N^2 δ_{k₁,k₂}
  ∂ₜ V[k₁, k₂] = Lᵥ V[k₁,k₂] - Nᵤ(U[k₁,k₂], V[k₁,k₂])
 
 with Lᵤ U[k₁,k₂]            = -[Dᵤ ( (2πk₁/d)^2 + (2πk₂/d)^2) + F] U[k₁,k₂]
@@ -65,7 +65,7 @@ class SpectralModel:
         self.tf_vt = np.zeros((self.N, self.N), dtype=complex)
 
         # Precompute various ETDRK4 scalar quantities
-        k1, k2 = np.meshgrid(np.arange(self.N), np.arange(self.N))
+        k1, k2 = np.meshgrid(np.arange(self.N).astype(float), np.arange(self.N).astype(float))
         k1[:,self.N/2+1:] -= self.N
         k2[self.N/2+1:,:] -= self.N
 
@@ -75,16 +75,21 @@ class SpectralModel:
         self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
         self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
 
-        self.Eu = np.exp(self.dt * self.Lu)
         self.E2u = np.exp(self.dt * self.Lu/2.)
-        self.Ev = np.exp(self.dt * self.Lv)
+        self.Eu = self.E2u ** 2
+        
         self.E2v = np.exp(self.dt * self.Lv/2.)
-
+        self.Ev = self.E2v ** 2
+        
         # TODO : is the mean for computing the (e^z - 1)/z required for this system ?
         # if so, it should be implemented here
         LRu = self.dt * self.Lu
         LRv = self.dt * self.Lv
 
+        # The matrix for integrating the constant F term in the equation of u
+        self.F2u = self.dt * (1. - np.exp(LRu/2.))/LRu
+        self.Fu = self.dt * (1. - np.exp(LRu))/LRu
+        
         LRu_2 = LRu**2.
         LRu_3 = LRu**3.
         self.Qu = self.dt * (np.exp(LRu/2.) - 1.) / LRu
@@ -129,19 +134,17 @@ class SpectralModel:
 
     def step(self):
         Nu, Nv = self.compute_Nuv(self.tf_ut_1, self.tf_vt_1)
-        au = self.E2u * self.tf_ut_1 + self.Qu * Nu 
+        au = self.E2u * self.tf_ut_1 + self.F2u * self.F *self.N*self.N+ self.Qu * Nu
         av = self.E2v * self.tf_vt_1 + self.Qv * Nv
         Nau, Nav = self.compute_Nuv(au, av)
-        bu = self.E2u * self.tf_ut_1 + self.Qu * Nau
+        bu = self.E2u * self.tf_ut_1 + self.F2u * self.F * self.N * self.N + self.Qu * Nau
         bv = self.E2v * self.tf_vt_1 + self.Qv * Nav
-        bu[0,0] += self.dt/2. * self.F * self.N
         Nbu, Nbv = self.compute_Nuv(bu, bv)
-        cu = self.E2u * au + self.Qu * (2. * Nbu - Nu)
+        cu = self.E2u * au + self.F2u * self.F * self.N * self.N + self.Qu * (2. * Nbu - Nu)
         cv = self.E2v * av + self.Qv * (2. * Nbv - Nv)
-        cu[0,0] += self.dt/2. * self.F * self.N
         Ncu, Ncv = self.compute_Nuv(cu, cv)
 
-        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
+        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.Fu * self.F * self.N * self.N + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
         self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.f1v * Nv + self.f2v * (Nav + Nbv) + self.f3v * Ncv
         self.tf_ut_1, self.tf_vt_1 = self.tf_ut, self.tf_vt
 
