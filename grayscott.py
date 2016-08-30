@@ -10,7 +10,7 @@ import sys
 import libgrayscott
 
 ''' 
-We considered a spatial domain of size d × d, with N × N samples
+We consider a spatial domain of size d × d, with N × N samples
 
 Expressed in the spectral domain, the system we solve is 
 
@@ -27,11 +27,17 @@ If we decompose the linear and non-linear parts of the equations, following the 
 with Lᵤ U[k₁,k₂]            = -[Dᵤ ( (2πk₁/d)^2 + (2πk₂/d)^2) + F] U[k₁,k₂]
      Nᵤ(U[k₁,k₂], V[k₁,k₂]) = -TF[TF^-1(U) (TF^-1(V))^2]
      Lᵥ V[k₁,k₂]            = -[Dᵥ ( (2πk₁/d)^2 + (2πk₂/d)^2) + (F + k)] V[k₁,k₂]
-     
-we can then use the formalas of Cox
+and we should not forget the term F δ_{k₁,k₂} which introduces a F dt δ_{k₁,k₂} in the integration with dt the time step
+
+we can then use the formulas of Cox and Mathews with the numerical stabilization procedure of Kassam, Trefethen for computing
+the terms like (e^z - 1)/z with the Cauchy Integral
+
+References:
+ - Notes on FFT-based differentiation, [Johnson, 2011]
+ - Fourth-order time stepping for stiff PDEs,  [Kassam, Trefethen, 2005]
 '''
 class SpectralModel:
-    def __init__(self, param_name, N, d=1, dt=0.1):
+    def __init__(self, param_name, N, d=1., dt=0.1):
         self.param_name = param_name
         if(self.param_name == 'solitons'):
             self.k = 0.056
@@ -46,8 +52,10 @@ class SpectralModel:
             self.k = 0.040
             self.F = 0.060
         self.N = N
-        self.Du = 0.2
-        self.Dv = 0.1
+        self.h = d/N
+        self.d = d
+        self.Du = 2 * 1e-5 / self.h**2
+        self.Dv = 1e-5 / self.h**2
         self.dt = dt
         self.noise = 0.2
 
@@ -57,7 +65,22 @@ class SpectralModel:
         self.vt = np.zeros((self.N, self.N), dtype=float)
 
         # Precompute various ETDRK4 scalar quantities
-        self.k = np.arange(self.N)
+        k1, k2 = np.meshgrid(np.arange(self.N), np.arange(self.N))
+        k1[:,self.N/2+1:] -= self.N
+        k2[self.N/2+1:,:] -= self.N
+
+        k1 *= 2.0 * np.pi / self.d
+        k2 *= 2.0 * np.pi / self.d
+
+        self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
+        self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
+
+        self.Eu = np.exp(self.dt * self.Lu)
+        self.E2u = np.exp(self.dt * self.Lu/2.)
+        self.Ev = np.exp(self.dt * self.Lv)
+        self.E2v = np.exp(self.dt * self.Lv/2.)
+
+        sys.exit(-1)
 
     def init(self):
         dN = self.N/4
@@ -79,7 +102,7 @@ class SpectralModel:
         
 class Model:
 
-	def __init__(self, param_name, N, mode,d=1,dt=0.1):
+	def __init__(self, param_name, N, mode,d=1.,dt=0.1):
 		self.param_name = param_name
 		if(self.param_name == 'solitons'):
 			self.k = 0.056
@@ -169,13 +192,15 @@ if(__name__ == '__main__'):
 
     mode = int(sys.argv[1])
     
-    N = 256
+    N = 100
     pattern = 'worms'
-    
+    d = 1.
+    dt = 1.
+
     if(mode <= 2):
         model = Model(pattern, N=N, mode=mode)
     elif mode == 3:
-        model = libgrayscott.GrayScott(pattern, N)
+        model = libgrayscott.GrayScott(pattern, N, d, dt)
     elif mode == 4:
         model = SpectralModel(pattern, N=N)
         
