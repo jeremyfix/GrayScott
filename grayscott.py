@@ -89,14 +89,14 @@ class SpectralModel:
         LRu_3 = LRu**3.
         self.Qu = self.dt * (np.exp(LRu/2.) - 1.) / LRu
         self.f1u = self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3
-        self.f2u = self.dt * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3
+        self.f2u = self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3
         self.f3u = self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3
 
         LRv_2 = LRv**2.
         LRv_3 = LRv**3.
         self.Qv = self.dt * (np.exp(LRv/2.) - 1.) / LRv
         self.f1v = self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3
-        self.f2v = self.dt * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3
+        self.f2v = self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3
         self.f3v = self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3
 
     def init(self):
@@ -141,8 +141,8 @@ class SpectralModel:
         cu[0,0] += self.dt/2. * self.F * self.N
         Ncu, Ncv = self.compute_Nuv(cu, cv)
 
-        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.f1u * Nu + 2. * self.f2u * (Nau + Nbu) + self.f3u * Ncu
-        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.f1v * Nv + 2. * self.f2v * (Nav + Nbv) + self.f3v * Ncv
+        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
+        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.f1v * Nv + self.f2v * (Nav + Nbv) + self.f3v * Ncv
         self.tf_ut_1, self.tf_vt_1 = self.tf_ut, self.tf_vt
 
         
