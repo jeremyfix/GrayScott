@@ -72,8 +72,8 @@ class SpectralModel:
         k1 *= 2.0 * np.pi / self.d
         k2 *= 2.0 * np.pi / self.d
 
-        self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
-        self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
+        self.Lu = -(self.Du * (k1**2 + k2**2))
+        self.Lv = -(self.Dv * (k1**2 + k2**2))
 
         self.Eu = np.exp(self.dt * self.Lu)
         self.E2u = np.exp(self.dt * self.Lu/2.)
@@ -124,8 +124,10 @@ class SpectralModel:
 
         
     def compute_Nuv(self, tf_u, tf_v):
-        uv2 = np.fft.fft2(np.fft.ifft2(tf_u).real * (np.fft.ifft2(tf_v).real**2))
-        return -uv2, uv2
+        ut = np.fft.ifft2(tf_u).real
+        vt = np.fft.ifft2(tf_v).real
+        uv2 = ut * vt**2
+        return np.fft.fft2(-uv2 + self.F * (1 - ut)), np.fft.fft2(uv2 - (self.F + self.k) * vt)
 
     def step(self):
         Nu, Nv = self.compute_Nuv(self.tf_ut_1, self.tf_vt_1)
