@@ -1,5 +1,9 @@
 # coding: utf-8
 
+## Two things to check :
+# - Is the normalization of the FFT (forw/inverse) critical for the formulas ? np.fft does not scale the forward but scales the backward while the equations in the ref "Notes on ..." did the opposite
+# - introduces the contour integral. It did not occur when the linear component f(1-u) was in L but the (exp(LR/2)-1)/LR is evaluated in LR=0 for k = 0 ...... 
+
 import numpy as np
 import scipy.signal
 import scipy.ndimage
