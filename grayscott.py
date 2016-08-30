@@ -81,7 +81,7 @@ class SpectralModel:
         self.E2v = np.exp(self.dt * self.Lv/2.)
         self.Ev = self.E2v ** 2
 
-        M = 32 # Nb of points for complex means
+        M = 16 # Nb of points for complex means
         r = (np.exp(1j * np.pi * (np.arange(M)+0.5)/M)).reshape((1, M))
         # TODO : is the mean for computing the (e^z - 1)/z required for this system ?
         # if so, it should be implemented here
@@ -90,29 +90,29 @@ class SpectralModel:
         print(LRu.shape)
         
         # The matrix for integrating the constant F term in the equation of u
-        self.F2u = np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.N, self.N))
-        self.Fu = np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N))
+        self.F2u = np.real(np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.N, self.N)))
+        self.Fu = np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N)))
         
         LRu_2 = LRu**2.
         LRu_3 = LRu**3.
-        self.Qu = np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.N, self.N))
-        self.f1u = np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.N, self.N))
-        self.f2u = np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.N, self.N))
-        self.f3u = np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.N, self.N))
+        self.Qu = np.real(np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.N, self.N)))
+        self.f1u = np.real(np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.N, self.N)))
+        self.f2u = np.real(np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
+        self.f3u = np.real(np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
 
         LRv_2 = LRv**2.
         LRv_3 = LRv**3.
-        self.Qv = np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.N, self.N))
-        self.f1v = np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.N, self.N))
-        self.f2v = np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.N, self.N))
-        self.f3v = np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.N, self.N))
+        self.Qv = np.real(np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.N, self.N)))
+        self.f1v = np.real(np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.N, self.N)))
+        self.f2v = np.real(np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
+        self.f3v = np.real(np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
 
     def init(self):
         dN = self.N/4
         
         ut_1 = np.zeros((self.N, self.N), dtype=float)
         ut_1[:,:] = 1
-        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
+        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.75
         ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
         ut_1[ut_1 <= 0] = 0
 
@@ -121,6 +121,10 @@ class SpectralModel:
         vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
         vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
         vt_1[vt_1 <= 0] = 0
+
+        # X, Y = np.meshgrid(np.linspace(-1,1,self.N), np.linspace(-1, 1, self.N))
+        # ut_1 = 1. - np.exp(-80 * (( X + .05)**2 + (Y + 0.02)**2))
+        # vt_1 = np.exp(-80 * (( X + .05)**2 + (Y + 0.02)**2))
         
         self.tf_ut_1[:,:] = np.fft.fft2(ut_1)
         self.tf_vt_1[:,:] = np.fft.fft2(vt_1)
