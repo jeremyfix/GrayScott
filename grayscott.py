@@ -59,10 +59,10 @@ class SpectralModel:
         self.dt = dt
         self.noise = 0.2
 
-        self.ut_1 = np.zeros((self.N, self.N), dtype=float)
-        self.vt_1 = np.zeros((self.N, self.N), dtype=float)
-        self.ut = np.zeros((self.N, self.N), dtype=float)
-        self.vt = np.zeros((self.N, self.N), dtype=float)
+        self.tf_ut_1 = np.zeros((self.N, self.N), dtype=complex)
+        self.tf_vt_1 = np.zeros((self.N, self.N), dtype=complex)
+        self.tf_ut = np.zeros((self.N, self.N), dtype=complex)
+        self.tf_vt = np.zeros((self.N, self.N), dtype=complex)
 
         # Precompute various ETDRK4 scalar quantities
         k1, k2 = np.meshgrid(np.arange(self.N), np.arange(self.N))
@@ -80,25 +80,71 @@ class SpectralModel:
         self.Ev = np.exp(self.dt * self.Lv)
         self.E2v = np.exp(self.dt * self.Lv/2.)
 
-        sys.exit(-1)
+        # TODO : is the mean for computing the (e^z - 1)/z required for this system ?
+        # if so, it should be implemented here
+        LRu = self.dt * self.Lu
+        LRv = self.dt * self.Lv
+
+        LRu_2 = LRu**2.
+        LRu_3 = LRu**3.
+        self.Qu = self.dt * (np.exp(LRu/2.) - 1.) / LRu
+        self.f1u = self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3
+        self.f2u = self.dt * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3
+        self.f3u = self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3
+
+        LRv_2 = LRv**2.
+        LRv_3 = LRv**3.
+        self.Qv = self.dt * (np.exp(LRv/2.) - 1.) / LRv
+        self.f1v = self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3
+        self.f2v = self.dt * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3
+        self.f3v = self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3
 
     def init(self):
         dN = self.N/4
-        self.ut_1[:,:] = 1
-        self.ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
-        self.ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
-        self.ut_1[self.ut_1 <= 0] = 0
-        self.vt_1[:,:] = 0
-        self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
-        self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
-        self.vt_1[self.vt_1 <= 0] = 0
         
-        self.tf_ut_1 = np.fft.fft2(self.ut_1)
-        self.tf_vt_1 = np.fft.fft2(self.vt_1)
+        ut_1 = np.zeros((self.N, self.N), dtype=float)
+        ut_1[:,:] = 1
+        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
+        ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+        ut_1[ut_1 <= 0] = 0
+
+        vt_1 = np.zeros((self.N, self.N), dtype=float)
+        vt_1[:,:] = 0
+        vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
+        vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+        vt_1[vt_1 <= 0] = 0
         
+        self.tf_ut_1[:,:] = np.fft.fft2(ut_1)
+        self.tf_vt_1[:,:] = np.fft.fft2(vt_1)
+        self.tf_ut[:,:] = self.tf_ut_1
+        self.tf_vt[:,:] = self.tf_vt_1
         
+    def get_ut(self):
+        return np.real(np.fft.ifft2(self.tf_ut))
+
+        
+    def compute_Nuv(self, tf_u, tf_v):
+        uv2 = np.fft.fft2(np.fft.ifft2(tf_u).real * (np.fft.ifft2(tf_v).real**2))
+        return -uv2, uv2
+
     def step(self):
-        pass
+        Nu, Nv = self.compute_Nuv(self.tf_ut_1, self.tf_vt_1)
+        au = self.E2u * self.tf_ut_1 + self.Qu * Nu 
+        av = self.E2v * self.tf_vt_1 + self.Qv * Nv
+        Nau, Nav = self.compute_Nuv(au, av)
+        bu = self.E2u * self.tf_ut_1 + self.Qu * Nau
+        bv = self.E2v * self.tf_vt_1 + self.Qv * Nav
+        bu[0,0] += self.dt/2. * self.F * self.N
+        Nbu, Nbv = self.compute_Nuv(bu, bv)
+        cu = self.E2u * au + self.Qu * (2. * Nbu - Nu)
+        cv = self.E2v * av + self.Qv * (2. * Nbv - Nv)
+        cu[0,0] += self.dt/2. * self.F * self.N
+        Ncu, Ncv = self.compute_Nuv(cu, cv)
+
+        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.f1u * Nu + 2. * self.f2u * (Nau + Nbu) + self.f3u * Ncu
+        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.f1v * Nv + 2. * self.f2v * (Nav + Nbv) + self.f3v * Ncv
+        self.tf_ut_1, self.tf_vt_1 = self.tf_ut, self.tf_vt
+
         
 class Model:
 
@@ -117,8 +163,8 @@ class Model:
                     self.k = 0.06093
                     self.F = 0.0620
 		else:
-			self.k = 0.040
-			self.F = 0.060
+                    self.k = 0.040
+                    self.F = 0.060
 		self.N = N
 		self.h = d/N		
 		self.Du = 2 * 1e-5 / self.h**2
@@ -155,6 +201,9 @@ class Model:
 		self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
 		self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
 		self.vt_1[self.vt_1 <= 0] = 0
+
+                self.vt[:,:] = self.vt_1[:,:]
+                self.ut[:,:] = self.ut_1[:,:]
 
 	def laplacian(self, x):
 		if(self.mode == 0):

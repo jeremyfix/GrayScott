@@ -42,13 +42,15 @@ mode = int(sys.argv[1])
 #
 d = 1.0 # The width of the domain
 N = 100 # The size of the lattice
-dt = 1.0 # the time step
+dt = 0.01 # the time step
 pattern = 'worms'
 
 if(mode <= 2):
     model = grayscott.Model(pattern, N=N, mode=mode, d=d, dt=dt)
-else:
+elif mode == 3:
     model = libgrayscott.GrayScott(pattern, N, d, dt)
+else:
+    model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt)
 
 model.init()
 
