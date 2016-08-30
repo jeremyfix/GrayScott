@@ -80,29 +80,32 @@ class SpectralModel:
         
         self.E2v = np.exp(self.dt * self.Lv/2.)
         self.Ev = self.E2v ** 2
-        
+
+        M = 32 # Nb of points for complex means
+        r = (np.exp(1j * np.pi * (np.arange(M)+0.5)/M)).reshape((1, M))
         # TODO : is the mean for computing the (e^z - 1)/z required for this system ?
         # if so, it should be implemented here
-        LRu = self.dt * self.Lu
-        LRv = self.dt * self.Lv
-
+        LRu = (self.dt * self.Lu).reshape((self.N*self.N, 1)) + r
+        LRv = (self.dt * self.Lv).reshape((self.N*self.N, 1)) + r
+        print(LRu.shape)
+        
         # The matrix for integrating the constant F term in the equation of u
-        self.F2u = self.dt * (1. - np.exp(LRu/2.))/LRu
-        self.Fu = self.dt * (1. - np.exp(LRu))/LRu
+        self.F2u = np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.N, self.N))
+        self.Fu = np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N))
         
         LRu_2 = LRu**2.
         LRu_3 = LRu**3.
-        self.Qu = self.dt * (np.exp(LRu/2.) - 1.) / LRu
-        self.f1u = self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3
-        self.f2u = self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3
-        self.f3u = self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3
+        self.Qu = np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.N, self.N))
+        self.f1u = np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.N, self.N))
+        self.f2u = np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.N, self.N))
+        self.f3u = np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.N, self.N))
 
         LRv_2 = LRv**2.
         LRv_3 = LRv**3.
-        self.Qv = self.dt * (np.exp(LRv/2.) - 1.) / LRv
-        self.f1v = self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3
-        self.f2v = self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3
-        self.f3v = self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3
+        self.Qv = np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.N, self.N))
+        self.f1v = np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.N, self.N))
+        self.f2v = np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.N, self.N))
+        self.f3v = np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.N, self.N))
 
     def init(self):
         dN = self.N/4
