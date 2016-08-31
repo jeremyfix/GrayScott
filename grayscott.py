@@ -82,8 +82,8 @@ class SpectralModel:
         self.Ev = self.E2v ** 2
 
         # The matrix for integrating the constant F term in the equation of u
-        self.Fu = (1. - np.exp(self.dt * self.Lu))/self.Lu
-        self.Fv = (1. - np.exp(self.dt * self.Lv))/self.Lv
+        self.Fu = -(1. - np.exp(self.dt * self.Lu))/self.Lu
+        self.Fv = -(1. - np.exp(self.dt * self.Lv))/self.Lv
 
     def init(self):
         dN = self.N/4
@@ -119,8 +119,8 @@ class SpectralModel:
 
     def step(self):
         Nu, Nv = self.compute_Nuv(self.tf_ut_1, self.tf_vt_1)
-        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.Fu * self.F * self.N * self.N + self.Fu * Nu
-        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.Fv * Nv
+        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.Fu * self.F * self.N * self.N + self.FNu * Nu
+        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.FNv * Nv
         self.tf_ut_1, self.tf_vt_1 = self.tf_ut, self.tf_vt
 
         
