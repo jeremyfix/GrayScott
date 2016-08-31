@@ -83,8 +83,7 @@ class SpectralModel:
 
         M = 16 # Nb of points for complex means
         r = (np.exp(1j * np.pi * (np.arange(M)+0.5)/M)).reshape((1, M))
-        # TODO : is the mean for computing the (e^z - 1)/z required for this system ?
-        # if so, it should be implemented here
+        # Generate the points along the unit circle contour over which to compute the mean
         LRu = (self.dt * self.Lu).reshape((self.N*self.N, 1)) + r
         LRv = (self.dt * self.Lv).reshape((self.N*self.N, 1)) + r
         
