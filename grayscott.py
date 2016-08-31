@@ -81,38 +81,16 @@ class SpectralModel:
         self.E2v = np.exp(self.dt * self.Lv/2.)
         self.Ev = self.E2v ** 2
 
-        M = 16 # Nb of points for complex means
-        r = (np.exp(1j * np.pi * (np.arange(M)+0.5)/M)).reshape((1, M))
-        # TODO : is the mean for computing the (e^z - 1)/z required for this system ?
-        # if so, it should be implemented here
-        LRu = (self.dt * self.Lu).reshape((self.N*self.N, 1)) + r
-        LRv = (self.dt * self.Lv).reshape((self.N*self.N, 1)) + r
-        print(LRu.shape)
-        
         # The matrix for integrating the constant F term in the equation of u
-        self.F2u = np.real(np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.N, self.N)))
-        self.Fu = np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N)))
-        
-        LRu_2 = LRu**2.
-        LRu_3 = LRu**3.
-        self.Qu = np.real(np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.N, self.N)))
-        self.f1u = np.real(np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.N, self.N)))
-        self.f2u = np.real(np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
-        self.f3u = np.real(np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
-
-        LRv_2 = LRv**2.
-        LRv_3 = LRv**3.
-        self.Qv = np.real(np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.N, self.N)))
-        self.f1v = np.real(np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.N, self.N)))
-        self.f2v = np.real(np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
-        self.f3v = np.real(np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
+        self.Fu = (1. - np.exp(self.dt * self.Lu))/self.Lu
+        self.Fv = (1. - np.exp(self.dt * self.Lv))/self.Lv
 
     def init(self):
         dN = self.N/4
-        
+    
         ut_1 = np.zeros((self.N, self.N), dtype=float)
         ut_1[:,:] = 1
-        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.75
+        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
         ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
         ut_1[ut_1 <= 0] = 0
 
@@ -141,18 +119,8 @@ class SpectralModel:
 
     def step(self):
         Nu, Nv = self.compute_Nuv(self.tf_ut_1, self.tf_vt_1)
-        au = self.E2u * self.tf_ut_1 + self.F2u * self.F *self.N*self.N+ self.Qu * Nu
-        av = self.E2v * self.tf_vt_1 + self.Qv * Nv
-        Nau, Nav = self.compute_Nuv(au, av)
-        bu = self.E2u * self.tf_ut_1 + self.F2u * self.F * self.N * self.N + self.Qu * Nau
-        bv = self.E2v * self.tf_vt_1 + self.Qv * Nav
-        Nbu, Nbv = self.compute_Nuv(bu, bv)
-        cu = self.E2u * au + self.F2u * self.F * self.N * self.N + self.Qu * (2. * Nbu - Nu)
-        cv = self.E2v * av + self.Qv * (2. * Nbv - Nv)
-        Ncu, Ncv = self.compute_Nuv(cu, cv)
-
-        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.Fu * self.F * self.N * self.N + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
-        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.f1v * Nv + self.f2v * (Nav + Nbv) + self.f3v * Ncv
+        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.Fu * self.F * self.N * self.N + self.Fu * Nu
+        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.Fv * Nv
         self.tf_ut_1, self.tf_vt_1 = self.tf_ut, self.tf_vt
 
         
