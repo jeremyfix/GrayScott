@@ -40,10 +40,15 @@ run = False
 
 mode = int(sys.argv[1])
 #
-d = 1.0 # The width of the domain
-N = 100 # The size of the lattice
-dt = 0.001 # the time step
-pattern = 'worms'
+if(mode <= 3):
+    d = 1.0 # The width of the domain
+    N = 100 # The size of the lattice
+    dt = 1. # the time step
+else:
+    d = 2.0
+    N = 256
+    dt = 10
+pattern = 'solitons'
 
 if(mode <= 2):
     model = grayscott.Model(pattern, N=N, mode=mode, d=d, dt=dt)
@@ -65,9 +70,9 @@ while key != ord('q'):
         model.step()
         u[:,:] = model.get_ut()
 	epoch += 1
-	if(epoch % 200 == 0):
+	if(epoch % 40 == 0):
 		t1 = time.time()
-		print("FPS: %f fps" % (200 / (t1 - t0)))
+		print("FPS: %f fps" % (50 / (t1 - t0)))
 		t0 = t1
     cv2.imshow('u', u)
     #cv2.imshow('v', model.vt)

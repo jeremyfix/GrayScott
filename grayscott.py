@@ -69,8 +69,8 @@ class SpectralModel:
         k1[:,self.N/2+1:] -= self.N
         k2[self.N/2+1:,:] -= self.N
 
-        k1 *= 2.0 * np.pi / self.d
-        k2 *= 2.0 * np.pi / self.d
+        k1 *= 2.0 * np.pi / self.N
+        k2 *= 2.0 * np.pi / self.N
 
         self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
         self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
@@ -87,11 +87,14 @@ class SpectralModel:
         # if so, it should be implemented here
         LRu = (self.dt * self.Lu).reshape((self.N*self.N, 1)) + r
         LRv = (self.dt * self.Lv).reshape((self.N*self.N, 1)) + r
-        print(LRu.shape)
         
         # The matrix for integrating the constant F term in the equation of u
-        self.F2u = np.real(np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.N, self.N)))
-        self.Fu = np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N)))
+        self.F2u = -np.real(np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.N, self.N)))
+        self.F2u[1:,:] = 0
+        self.F2u[:,1:] = 0
+        self.Fu = -np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N)))
+        self.Fu[1:,:] = 0
+        self.Fu[:,1:] = 0
         
         LRu_2 = LRu**2.
         LRu_3 = LRu**3.
@@ -112,7 +115,7 @@ class SpectralModel:
         
         ut_1 = np.zeros((self.N, self.N), dtype=float)
         ut_1[:,:] = 1
-        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.75
+        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
         ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
         ut_1[ut_1 <= 0] = 0
 
