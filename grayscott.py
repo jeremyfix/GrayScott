@@ -1,5 +1,10 @@
 # coding: utf-8
 
+# This is apparently working
+# The main differences are :
+# the sign in the self.Fu, I forgot a "-" in front
+# the scaling of k1 and k2, I scaled it by 1/d, while it might probably be 1/N
+
 import numpy as np
 import scipy.signal
 import scipy.ndimage
@@ -69,8 +74,8 @@ class SpectralModel:
         k1[:,self.N/2+1:] -= self.N
         k2[self.N/2+1:,:] -= self.N
 
-        k1 *= 2.0 * np.pi / self.d
-        k2 *= 2.0 * np.pi / self.d
+        k1 *= 2.0 * np.pi / self.N
+        k2 *= 2.0 * np.pi / self.N
 
         self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
         self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
@@ -82,8 +87,15 @@ class SpectralModel:
         self.Ev = self.E2v ** 2
 
         # The matrix for integrating the constant F term in the equation of u
-        self.Fu = -(1. - np.exp(self.dt * self.Lu))/self.Lu
-        self.Fv = -(1. - np.exp(self.dt * self.Lv))/self.Lv
+        self.FNu = -(1. - np.exp(self.dt * self.Lu))/self.Lu
+        self.FNv = -(1. - np.exp(self.dt * self.Lv))/self.Lv
+
+        self.Fu = self.FNu.copy()
+        self.Fu[1:,:] = 0
+        self.Fu[:,1:] = 0
+        self.Fv = self.FNv.copy()
+        self.Fv[1:,:] = 0
+        self.Fv[:,1:] = 0
 
     def init(self):
         dN = self.N/4

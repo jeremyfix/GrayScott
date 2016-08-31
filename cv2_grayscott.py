@@ -42,7 +42,7 @@ mode = int(sys.argv[1])
 #
 d = 1.0 # The width of the domain
 N = 100 # The size of the lattice
-dt = 0.1 # the time step
+dt = 10. # the time step
 pattern = 'worms'
 
 if(mode <= 2):
