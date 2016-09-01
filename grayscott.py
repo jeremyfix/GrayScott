@@ -37,7 +37,8 @@ References:
  - Fourth-order time stepping for stiff PDEs,  [Kassam, Trefethen, 2005]
 '''
 class SpectralModel:
-    def __init__(self, param_name, N, d=1., dt=0.1):
+    ''' Mode can be in ETDFD or ETDRK4 '''
+    def __init__(self, param_name, N, d=1., dt=0.1, mode='ETDFO'):
         self.param_name = param_name
         if(self.param_name == 'solitons'):
             self.k = 0.056
@@ -59,10 +60,15 @@ class SpectralModel:
         self.dt = dt
         self.noise = 0.2
 
-        self.tf_ut_1 = np.zeros((self.N, self.N), dtype=complex)
-        self.tf_vt_1 = np.zeros((self.N, self.N), dtype=complex)
+        #self.tf_ut_1 = np.zeros((self.N, self.N), dtype=complex)
+        #self.tf_vt_1 = np.zeros((self.N, self.N), dtype=complex)
         self.tf_ut = np.zeros((self.N, self.N), dtype=complex)
         self.tf_vt = np.zeros((self.N, self.N), dtype=complex)
+
+        self.mode = mode
+        if(not self.mode in ['ETDFD','ETDRK4']):
+            print("The numerical scheme you mentioned is not implemented")
+            raise Exception("Unknown numerical scheme, must be ETDFD or ETDRK4")
 
         # Precompute various ETDRK4 scalar quantities
         k1, k2 = np.meshgrid(np.arange(self.N).astype(float), np.arange(self.N).astype(float))
@@ -94,45 +100,42 @@ class SpectralModel:
         self.Fu = -np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N)))
         self.Fu[1:,:] = 0
         self.Fu[:,1:] = 0
-        
-        LRu_2 = LRu**2.
-        LRu_3 = LRu**3.
-        self.Qu = np.real(np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.N, self.N)))
-        self.f1u = np.real(np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.N, self.N)))
-        self.f2u = np.real(np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
-        self.f3u = np.real(np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
+        if(mode == 'ETDFD'):
+            self.FNu = -np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.N, self.N)))
+            self.FNv = -np.real(np.mean(self.dt * (1. - np.exp(LRv))/LRv, axis=1).reshape((self.N, self.N)))
+        elif(mode == 'ETDRK4'): 
+            LRu_2 = LRu**2.
+            LRu_3 = LRu**3.
+            self.Qu = np.real(np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.N, self.N)))
+            self.f1u = np.real(np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.N, self.N)))
+            self.f2u = np.real(np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
+            self.f3u = np.real(np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.N, self.N)))
 
-        LRv_2 = LRv**2.
-        LRv_3 = LRv**3.
-        self.Qv = np.real(np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.N, self.N)))
-        self.f1v = np.real(np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.N, self.N)))
-        self.f2v = np.real(np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
-        self.f3v = np.real(np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
+            LRv_2 = LRv**2.
+            LRv_3 = LRv**3.
+            self.Qv = np.real(np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.N, self.N)))
+            self.f1v = np.real(np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.N, self.N)))
+            self.f2v = np.real(np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
+            self.f3v = np.real(np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.N, self.N)))
 
     def init(self):
         dN = self.N/4
         
-        ut_1 = np.zeros((self.N, self.N), dtype=float)
-        ut_1[:,:] = 1
-        ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
-        ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
-        ut_1[ut_1 <= 0] = 0
+        ut = np.zeros((self.N, self.N), dtype=float)
+        ut[:,:] = 1
+        ut[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
+        ut += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+        ut[ut <= 0] = 0
 
-        vt_1 = np.zeros((self.N, self.N), dtype=float)
-        vt_1[:,:] = 0
-        vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
-        vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
-        vt_1[vt_1 <= 0] = 0
-
-        # X, Y = np.meshgrid(np.linspace(-1,1,self.N), np.linspace(-1, 1, self.N))
-        # ut_1 = 1. - np.exp(-80 * (( X + .05)**2 + (Y + 0.02)**2))
-        # vt_1 = np.exp(-80 * (( X + .05)**2 + (Y + 0.02)**2))
+        vt = np.zeros((self.N, self.N), dtype=float)
+        vt[:,:] = 0
+        vt[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
+        vt += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+        vt[vt <= 0] = 0
         
-        self.tf_ut_1[:,:] = np.fft.fft2(ut_1)
-        self.tf_vt_1[:,:] = np.fft.fft2(vt_1)
-        self.tf_ut[:,:] = self.tf_ut_1
-        self.tf_vt[:,:] = self.tf_vt_1
-        
+        self.tf_ut = np.fft.fft2(ut)
+        self.tf_vt = np.fft.fft2(vt)
+       
     def get_ut(self):
         return np.real(np.fft.ifft2(self.tf_ut))
 
@@ -142,20 +145,24 @@ class SpectralModel:
         return -uv2, uv2
 
     def step(self):
-        Nu, Nv = self.compute_Nuv(self.tf_ut_1, self.tf_vt_1)
-        au = self.E2u * self.tf_ut_1 + self.F2u * self.F *self.N*self.N+ self.Qu * Nu
-        av = self.E2v * self.tf_vt_1 + self.Qv * Nv
-        Nau, Nav = self.compute_Nuv(au, av)
-        bu = self.E2u * self.tf_ut_1 + self.F2u * self.F * self.N * self.N + self.Qu * Nau
-        bv = self.E2v * self.tf_vt_1 + self.Qv * Nav
-        Nbu, Nbv = self.compute_Nuv(bu, bv)
-        cu = self.E2u * au + self.F2u * self.F * self.N * self.N + self.Qu * (2. * Nbu - Nu)
-        cv = self.E2v * av + self.Qv * (2. * Nbv - Nv)
-        Ncu, Ncv = self.compute_Nuv(cu, cv)
+        if(self.mode == 'ETDFD'):
+            Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)
+            self.tf_ut = self.Eu * self.tf_ut + self.Fu * self.F * self.N * self.N + self.FNu * Nu 
+            self.tf_vt = self.Ev * self.tf_vt + self.FNv * Nv 
+        elif(self.mode == 'ETDRK4'):
+            Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)
+            au = self.E2u * self.tf_ut + self.F2u * self.F *self.N*self.N+ self.Qu * Nu
+            av = self.E2v * self.tf_vt + self.Qv * Nv
+            Nau, Nav = self.compute_Nuv(au, av)
+            bu = self.E2u * self.tf_ut + self.F2u * self.F * self.N * self.N + self.Qu * Nau
+            bv = self.E2v * self.tf_vt + self.Qv * Nav
+            Nbu, Nbv = self.compute_Nuv(bu, bv)
+            cu = self.E2u * au + self.F2u * self.F * self.N * self.N + self.Qu * (2. * Nbu - Nu)
+            cv = self.E2v * av + self.Qv * (2. * Nbv - Nv)
+            Ncu, Ncv = self.compute_Nuv(cu, cv)
 
-        self.tf_ut[:,:] = self.Eu * self.tf_ut_1 + self.Fu * self.F * self.N * self.N + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
-        self.tf_vt[:,:] = self.Ev * self.tf_vt_1 + self.f1v * Nv + self.f2v * (Nav + Nbv) + self.f3v * Ncv
-        self.tf_ut_1, self.tf_vt_1 = self.tf_ut, self.tf_vt
+            self.tf_ut = self.Eu * self.tf_ut + self.Fu * self.F * self.N * self.N + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
+            self.tf_vt = self.Ev * self.tf_vt + self.f1v * Nv + self.f2v * (Nav + Nbv) + self.f3v * Ncv
 
         
 class Model:

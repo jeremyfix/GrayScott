@@ -31,9 +31,10 @@ print("   i : reinitialize the concentrations")
 print("   q : quit")
 print("   c : erase the reactant v in a randomly chosen circular patch")
 print("   p : save the current u potential")
+print("   f : toggle fullscreen/normal screen")
     
-cv2.namedWindow('u')
-#cv2.namedWindow('v')
+cv2.namedWindow('u', cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_NORMAL)
 
 key = 0
 run = False
@@ -46,7 +47,7 @@ if(mode <= 3):
     dt = 1. # the time step
 else:
     d = 2.0
-    N = 256
+    N = 100
     dt = 10
 pattern = 'solitons'
 
@@ -55,7 +56,7 @@ if(mode <= 2):
 elif mode == 3:
     model = libgrayscott.GrayScott(pattern, N, d, dt)
 else:
-    model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt)
+    model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
 
 model.init()
 
@@ -70,12 +71,11 @@ while key != ord('q'):
         model.step()
         u[:,:] = model.get_ut()
 	epoch += 1
-	if(epoch % 40 == 0):
+	if(epoch % 100 == 0):
 		t1 = time.time()
-		print("FPS: %f fps" % (50 / (t1 - t0)))
+		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
     cv2.imshow('u', u)
-    #cv2.imshow('v', model.vt)
 
     key = cv2.waitKey(1) & 0xFF
 
@@ -91,3 +91,9 @@ while key != ord('q'):
         print("Saving u-%05d.png" % frame_id)
         cv2.imwrite("u-%05d.png" % frame_id, model.get_ut())
         frame_id += 1
+    elif key == ord('f'):
+        screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
+        if(screenmode == cv2.cv.CV_WINDOW_NORMAL):
+            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+        else:
+            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_NORMAL)
