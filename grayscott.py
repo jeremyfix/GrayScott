@@ -154,9 +154,18 @@ class SpectralModel:
     # mask.dtype = float
     # mask_ij in [0, 1]
     def mask_reactant(self, mask):
-        vt =np.real(np.fft.ifft2(self.tf_vt))
-        vt = vt * mask
+        #vt =np.real(np.fft.ifft2(self.tf_vt))
+        #vt = vt * mask
+        #self.tf_vt = np.fft.fft2(vt)
+
+
+        vt = np.real(np.fft.ifft2(self.tf_vt))
+        vt[mask >= 0.5] = 0.0
         self.tf_vt = np.fft.fft2(vt)
+        
+        ut = np.real(np.fft.ifft2(self.tf_ut))
+        ut[mask >= 0.5] = 0.0
+        self.tf_ut = np.fft.fft2(ut)
 
     
     

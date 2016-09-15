@@ -31,7 +31,7 @@ run = False
 #
 d = 1.5
 N = 256
-dt = 20
+dt = 10
 pattern = 'solitons'
 
 model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
@@ -59,17 +59,20 @@ while key != ord('q'):
             cv2.resize(depth_img, (N, N))
             cv2.imshow('Depth', depth_img)
             
-            depth = depth.astype(np.float)/2048.
-	    depth = 1. - cv2.resize(depth, (N, N))
+            depth = cv2.resize(depth.astype(np.float)/2048., (N, N))
+	    #depth = 1. - cv2.resize(depth, (N, N))
             #print(depth.min(), depth.max(), depth.mean())
-            depth = depth * 0.85 / depth.mean()
-            mask = 0.75 + 0.25 * depth
-            model.mask_reactant(mask)
+            #depth = depth * 0.85 / depth.mean()
+            #mask = 0.75 + 0.25 * depth
+            model.mask_reactant(depth)
         model.step()
         u[:,:] = model.get_ut()
 	epoch += 1
 
-    cv2.imshow('u', u)
+    u_img = cv2.resize(u, (1000,1000), interpolation=cv2.INTER_CUBIC)
+    u_img[u_img >= 0.5] = 1.0
+    u_img[u_img < 0.5] = 0.
+    cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
 
