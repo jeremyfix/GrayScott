@@ -157,7 +157,9 @@ class SpectralModel:
         vt =np.real(np.fft.ifft2(self.tf_vt))
         vt = vt * mask
         self.tf_vt = np.fft.fft2(vt)
-        
+
+    
+    
     def step(self):
         if(self.mode == 'ETDFD'):
             Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)

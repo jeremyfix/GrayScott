@@ -13,5 +13,6 @@ while(key != ord('q')):
 	# Build up a RGB image with components in [0,1]
 	depth_img = (np.dstack((depth, depth, depth)).astype(np.float)/2048.)
 	depth_img = cv2.resize(depth_img, (100, 100))
+        print(depth_img)
 	cv2.imshow('Depth', depth_img)
 	key = cv2.waitKey(1) & 0xFF

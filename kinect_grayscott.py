@@ -11,71 +11,64 @@ import sys
 import random
 import numpy as np
 import time
+from freenect import sync_get_depth as get_depth
 
 import grayscott
-import libgrayscott
-
-if(len(sys.argv) <= 1):
-    print("Usage : %s mode "% sys.argv[0])
-    print("With mode : ")
-    print("   0 : spatial model with FFT convolution in python, forward euler") # 100 fps
-    print("   1 : spatial model with ndimage.convolve in python, forward euler") # 165 fps
-    print("   2 : spatial model with ndimage.laplace in python, forward euler") # 150 fps
-    print("   3 : spatial model with fast laplacian in C++, forward euler") # 400 fps
-    print("   4 : spectral model in python using ETDRK4")
-    sys.exit(-1)
 
 print(" Press : ")
 print("   s : start/pause")
 print("   i : reinitialize the concentrations")
 print("   q : quit")
-print("   c : erase the reactant v in a randomly chosen box patch")
-print("   m : mask the reactant with a randomly generated mask")
-print("   p : save the current u potential")
 print("   f : toggle fullscreen/normal screen")
-    
+
+cv2.namedWindow("Depth")
 cv2.namedWindow('u', cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
 key = 0
 run = False
 
-mode = int(sys.argv[1])
 #
-if(mode <= 3):
-    d = 1.5 # The width of the domain
-    N = 128 # The size of the lattice
-    dt = 1. # the time step
-else:
-    d = 1.5
-    N = 256
-    dt = 10
+d = 1.5
+N = 256
+dt = 10
 pattern = 'solitons'
 
-if(mode <= 2):
-    model = grayscott.Model(pattern, N=N, mode=mode, d=d, dt=dt)
-elif mode == 3:
-    model = libgrayscott.GrayScott(pattern, N, d, dt)
-else:
-    model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
+model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
 
 model.init()
 
 
 u = np.zeros((N, N))
 epoch = 0
+can_mask = False
 
-t0 = time.time()
-frame_id = 0
 while key != ord('q'):
-    if(run): 
+
+    # As soon as we get a minimum reactant, we start
+    # to take into account the kinect
+    # Otherwise, the whole activity vanishes
+    if((model.get_ut().mean() <= 0.7) and not can_mask):
+        can_mask = True
+        print("Masking begins")
+    if(run):
+        if(can_mask):
+            (depth,_) = get_depth()
+            
+            depth_img = (np.dstack((depth, depth, depth)).astype(np.float)/2048.)
+            cv2.resize(depth_img, (N, N))
+            cv2.imshow('Depth', depth_img)
+            
+            depth = depth.astype(np.float)/2048.
+	    depth = 1. - cv2.resize(depth, (N, N))
+            #print(depth.min(), depth.max(), depth.mean())
+            depth = depth * 0.85 / depth.mean()
+            mask = 0.75 + 0.25 * depth
+            model.mask_reactant(mask)
         model.step()
         u[:,:] = model.get_ut()
 	epoch += 1
-	if(epoch % 100 == 0):
-		t1 = time.time()
-		print("FPS: %f fps" % (100 / (t1 - t0)))
-		t0 = t1
+
     cv2.imshow('u', u)
 
     key = cv2.waitKey(1) & 0xFF
@@ -91,10 +84,6 @@ while key != ord('q'):
         print("Running ? : " + str(run))
     elif key == ord('i'):
         model.init()
-    elif key == ord('p'):
-        print("Saving u-%05d.png" % frame_id)
-        cv2.imwrite("u-%05d.png" % frame_id, model.get_ut())
-        frame_id += 1
     elif key == ord('f'):
         screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
         if(screenmode == cv2.WINDOW_NORMAL):
