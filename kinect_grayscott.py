@@ -31,7 +31,7 @@ run = False
 #
 d = 1.5
 N = 256
-dt = 10
+dt = 20
 pattern = 'solitons'
 
 model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
