@@ -139,11 +139,25 @@ class SpectralModel:
     def get_ut(self):
         return np.real(np.fft.ifft2(self.tf_ut))
 
-        
     def compute_Nuv(self, tf_u, tf_v):
         uv2 = np.fft.fft2(np.fft.ifft2(tf_u).real * (np.fft.ifft2(tf_v).real**2))
         return -uv2, uv2
 
+    # Erase the reactant in a box
+    def erase_reactant(self, center, radius):
+        vt =np.real(np.fft.ifft2(self.tf_vt))
+        vt[(center[0]-radius):(center[0]+radius), (center[1]-radius):(center[1]+radius)] = 0
+        self.tf_vt = np.fft.fft2(vt)      
+
+    # Mask the reactant,
+    # mask.shape = self.N, self.N
+    # mask.dtype = float
+    # mask_ij in [0, 1]
+    def mask_reactant(self, mask):
+        vt =np.real(np.fft.ifft2(self.tf_vt))
+        vt = vt * mask
+        self.tf_vt = np.fft.fft2(vt)
+        
     def step(self):
         if(self.mode == 'ETDFD'):
             Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)
@@ -235,14 +249,17 @@ class Model:
         def get_ut(self):
                 return self.ut
 
-	def step(self):
-		uvv = self.ut_1 * self.vt_1**2
-		lu = self.laplacian(self.ut_1)
-		lv = self.laplacian(self.vt_1)	
-		self.ut[:,:] = self.ut_1 + self.dt * (self.Du * lu - uvv + self.F*(1-self.ut_1))
-		self.vt[:,:] = self.vt_1 + self.dt * (self.Dv * lv + uvv - (self.F + self.k) * self.vt_1)
+        def erase_reactant(self, center, radius):
+	    pass
 
-		self.ut_1, self.vt_1  = self.ut, self.vt
+	def step(self):
+	    uvv = self.ut_1 * self.vt_1**2
+	    lu = self.laplacian(self.ut_1)
+	    lv = self.laplacian(self.vt_1)	
+	    self.ut[:,:] = self.ut_1 + self.dt * (self.Du * lu - uvv + self.F*(1-self.ut_1))
+	    self.vt[:,:] = self.vt_1 + self.dt * (self.Dv * lv + uvv - (self.F + self.k) * self.vt_1)
+            
+	    self.ut_1, self.vt_1  = self.ut, self.vt
 
 
 

@@ -29,12 +29,13 @@ print(" Press : ")
 print("   s : start/pause")
 print("   i : reinitialize the concentrations")
 print("   q : quit")
-print("   c : erase the reactant v in a randomly chosen circular patch")
+print("   c : erase the reactant v in a randomly chosen box patch")
+print("   m : mask the reactant with a randomly generated mask")
 print("   p : save the current u potential")
 print("   f : toggle fullscreen/normal screen")
     
 cv2.namedWindow('u', cv2.WND_PROP_FULLSCREEN)
-cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_NORMAL)
+cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
 key = 0
 run = False
@@ -42,14 +43,14 @@ run = False
 mode = int(sys.argv[1])
 #
 if(mode <= 3):
-    d = 1.0 # The width of the domain
-    N = 100 # The size of the lattice
+    d = 1.5 # The width of the domain
+    N = 128 # The size of the lattice
     dt = 1. # the time step
 else:
-    d = 2.0
-    N = 100
+    d = 1.5
+    N = 256
     dt = 10
-pattern = 'solitons'
+pattern = 'worms'
 
 if(mode <= 2):
     model = grayscott.Model(pattern, N=N, mode=mode, d=d, dt=dt)
@@ -81,7 +82,10 @@ while key != ord('q'):
 
     if(key == ord('c')):
         c = (random.randint(0, N-1), random.randint(0, N-1))
-        cv2.circle(model.vt_1, c , N/4, 0, -1)
+        model.erase_reactant(c , N/8)
+    elif(key == ord('m')):
+        mask = 0.75 + 0.25*np.random.random((N, N))
+        model.mask_reactant(mask)
     elif key == ord('s'):
         run = not run
         print("Running ? : " + str(run))
@@ -93,7 +97,7 @@ while key != ord('q'):
         frame_id += 1
     elif key == ord('f'):
         screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
-        if(screenmode == cv2.cv.CV_WINDOW_NORMAL):
-            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_FULLSCREEN)
+        if(screenmode == cv2.WINDOW_NORMAL):
+            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
-            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.cv.CV_WINDOW_NORMAL)
+            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
