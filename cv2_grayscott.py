@@ -93,7 +93,7 @@ while key != ord('q'):
         model.init()
     elif key == ord('p'):
         print("Saving u-%05d.png" % frame_id)
-        cv2.imwrite("u-%05d.png" % frame_id, model.get_ut())
+        cv2.imwrite("u-%05d.png" % frame_id, (255*model.get_ut()).astype(np.uint8))
         frame_id += 1
     elif key == ord('f'):
         screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
