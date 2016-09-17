@@ -9,6 +9,7 @@ if(len(sys.argv) != 2):
 
 
 cv2.namedWindow("src")
+cv2.namedWindow("effect")
 cv2.namedWindow("dst")
 
 img = (cv2.imread(sys.argv[1])[:,:,0]).astype(np.float)/255.
@@ -24,14 +25,20 @@ kernel[:3,:] = -1
 kernel[3:,:] = 1
 print(kernel.mean())
 
-dst=np.zeros((10, 10))
-dst = scipy.signal.convolve2d(img, kernel, mode='same')
+effect = scipy.signal.convolve2d(img, kernel, mode='same')
 #dst[dst < 0] = 0
-#dst[dst > 1.] = 1
-print(dst.min(), dst.max())
+effect /= effect.max()
+effect[effect <= 0.0] = 0
 
-cv2.imshow("src", (img+1.)/2.)
-cv2.imshow("dst", dst/dst.max())
+img = (img + 1.)/2.
+
+dst = 0.8 * img + 0.2 * effect
+
+
+
+cv2.imshow("src", cv2.resize(img, (700, 700), interpolation=cv2.INTER_CUBIC))
+cv2.imshow("effect", effect)
+cv2.imshow("dst", cv2.resize(dst, (700, 700), interpolation=cv2.INTER_CUBIC))
 cv2.waitKey(0)
 
 

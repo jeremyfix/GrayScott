@@ -11,6 +11,7 @@ import sys
 import random
 import numpy as np
 import time
+import scipy
 
 import grayscott
 import libgrayscott
@@ -61,6 +62,28 @@ else:
 
 model.init()
 
+def make_effect(u_orig):
+    u = u_orig.copy()
+    u[u >= 0.5] = 1.0
+    u[u < 0.5] = 0
+    kernel = np.zeros((5,5), dtype=np.float)
+    kernel[:3,:] = -1
+    kernel[3:, :] = 1
+    effect = scipy.signal.convolve2d(2. * (u - 0.5), kernel, mode='same')
+    effect /= effect.max()
+    effect[effect <= 0.0] = 0.0
+    dst = 0.8 * u + 0.2 * effect
+    # Edge enhancement
+    dst = cv2.resize(dst, (500, 500))
+    kernel = 0.25 * np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=np.float)
+    dst = dst + scipy.signal.convolve2d(dst, kernel, mode='same')
+    print(dst.min(), dst.max())
+    dst[dst <= 0] = 0
+    #dst += dst.min()
+    dst /= dst.max()
+    
+    return u#dst#cv2.resize(dst, (500,500))# interpolation=cv2.INTER_CUBIC)
+
 
 u = np.zeros((N, N))
 epoch = 0
@@ -76,7 +99,8 @@ while key != ord('q'):
 		t1 = time.time()
 		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
-    cv2.imshow('u', u)
+    u_img = make_effect(u)
+    cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
 
@@ -93,7 +117,7 @@ while key != ord('q'):
         model.init()
     elif key == ord('p'):
         print("Saving u-%05d.png" % frame_id)
-        cv2.imwrite("u-%05d.png" % frame_id, (255*model.get_ut()).astype(np.uint8))
+        cv2.imwrite("u-%05d.png" % frame_id, (255*u_img).astype(np.uint8))
         frame_id += 1
     elif key == ord('f'):
         screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
