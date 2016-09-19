@@ -62,21 +62,21 @@ else:
 
 model.init()
 
-def make_effect2(u_orig):
+def make_effect2(u_orig, w=700):
     #u = cv2.resize(u_orig, (300,300))
-    u = u_orig.copy()
-    u[u >= 0.5] = 1.0
-    u[u < 0.5] = 0
+    #u = u_orig.copy()
+    #u[u >= 0.5] = 1.0
+    #u[u < 0.5] = 0
     
     kernel = np.zeros((10,10), dtype=np.float)
     kernel[:8,:] = -1
     kernel[8:, :] = 1
-    effect = scipy.signal.convolve2d(2. * (u - 0.5), kernel, mode='same')
+    effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
     #effect /= effect.max()
-    effect /= 100.
-    #effect[effect >= 1.0] = 1.0
+    effect /= 30.
+    effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
-    dst = 0.5 * u + 0.5 * effect
+    dst = 0.6 * cv2.resize(u, (w,w), interpolation=cv2.INTER_CUBIC) + 0.4 * cv2.resize(effect, (w,w), interpolation=cv2.INTER_CUBIC)
     # Edge enhancement
     #dst = cv2.resize(dst, (500, 500))
     #kernel = 0.25 * np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=np.float)
@@ -85,10 +85,10 @@ def make_effect2(u_orig):
     #dst[dst <= 0] = 0
     #dst += dst.min()
     #dst /= dst.max()
-    dst[dst >= 1.0] = 1.0
-    dst[dst < 0.] = 0.
+    #dst[dst >= 1.0] = 1.0
+    #dst[dst < 0.] = 0.
     
-    return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
+    return dst#cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
 
 def make_effect(u_orig):
     u = u_orig.copy()
@@ -110,6 +110,26 @@ def make_effect(u_orig):
         
     return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
 
+def make_effect3(u_orig, w=500):
+    kernel = np.zeros((10,10), dtype=np.float)
+    kernel[:8,:] = -1
+    kernel[8:, :] = 1
+    effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
+    #effect /= effect.max()
+    effect /= 30.
+    effect[effect >= 1.0] = 1.0
+    effect[effect <= 0.0] = 0.0
+    effect_hires = cv2.resize(effect, (w,w), interpolation=cv2.INTER_CUBIC)
+
+    u_hires = cv2.resize(u_orig, (w, w),interpolation=cv2.INTER_CUBIC)
+    u_hires[u_hires >= 0.5] = 1.
+    u_hires[u_hires < 0.5 ] = 0.
+    u_blur = scipy.signal.convolve2d(u_hires, np.ones((11,11))/121.)#, mode='same')
+
+    dst = 0.6 * u_hires + 0.4 * effect_hires
+    dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
+    return dst
+
 
 u = np.zeros((N, N))
 epoch = 0
@@ -125,8 +145,9 @@ while key != ord('q'):
 		t1 = time.time()
 		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
-    u_img = make_effect2(u)
-    cv2.imshow('u', u_img)
+        
+        u_img = make_effect3(u)
+        cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
 
