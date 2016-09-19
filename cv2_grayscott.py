@@ -72,9 +72,11 @@ def make_effect2(u_orig):
     kernel[:8,:] = -1
     kernel[8:, :] = 1
     effect = scipy.signal.convolve2d(2. * (u - 0.5), kernel, mode='same')
-    effect /= effect.max()
+    #effect /= effect.max()
+    effect /= 100.
+    #effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
-    dst = 0.3 * u + 0.7 * effect
+    dst = 0.5 * u + 0.5 * effect
     # Edge enhancement
     #dst = cv2.resize(dst, (500, 500))
     #kernel = 0.25 * np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=np.float)
@@ -84,8 +86,9 @@ def make_effect2(u_orig):
     #dst += dst.min()
     #dst /= dst.max()
     dst[dst >= 1.0] = 1.0
+    dst[dst < 0.] = 0.
     
-    return dst#cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
+    return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
 
 def make_effect(u_orig):
     u = u_orig.copy()
