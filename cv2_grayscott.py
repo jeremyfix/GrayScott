@@ -62,10 +62,33 @@ else:
 
 model.init()
 
-def make_effect(u_orig):
+def make_effect2(u_orig):
+    #u = cv2.resize(u_orig, (300,300))
     u = u_orig.copy()
     u[u >= 0.5] = 1.0
     u[u < 0.5] = 0
+    
+    kernel = np.zeros((10,10), dtype=np.float)
+    kernel[:8,:] = -1
+    kernel[8:, :] = 1
+    effect = scipy.signal.convolve2d(2. * (u - 0.5), kernel, mode='same')
+    effect /= effect.max()
+    effect[effect <= 0.0] = 0.0
+    dst = 0.3 * u + 0.7 * effect
+    # Edge enhancement
+    #dst = cv2.resize(dst, (500, 500))
+    #kernel = 0.25 * np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=np.float)
+    #dst = dst + scipy.signal.convolve2d(dst, kernel, mode='same')
+    #print(dst.min(), dst.max())
+    #dst[dst <= 0] = 0
+    #dst += dst.min()
+    #dst /= dst.max()
+    dst[dst >= 1.0] = 1.0
+    
+    return dst#cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
+
+def make_effect(u_orig):
+    u = u_orig.copy()
     kernel = np.zeros((5,5), dtype=np.float)
     kernel[:3,:] = -1
     kernel[3:, :] = 1
@@ -81,8 +104,8 @@ def make_effect(u_orig):
     dst[dst <= 0] = 0
     #dst += dst.min()
     dst /= dst.max()
-    
-    return u#dst#cv2.resize(dst, (500,500))# interpolation=cv2.INTER_CUBIC)
+        
+    return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
 
 
 u = np.zeros((N, N))
@@ -99,7 +122,7 @@ while key != ord('q'):
 		t1 = time.time()
 		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
-    u_img = make_effect(u)
+    u_img = make_effect2(u)
     cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF

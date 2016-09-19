@@ -13,16 +13,16 @@ cv2.namedWindow("effect")
 cv2.namedWindow("dst")
 
 img = (cv2.imread(sys.argv[1])[:,:,0]).astype(np.float)/255.
+img[img > 0.5] = 1
+img[img <= 0.5] = 0
 img = 2. * (img - 0.5)  # img in [-1,1]
-#img[img > 0.5] = 1
-#img[img <= 0.5] = 0
 print(img[0,:])
 print(img.shape)
 
 
-kernel = np.zeros((5, 5), dtype=np.float)
-kernel[:3,:] = -1
-kernel[3:,:] = 1
+kernel = np.zeros((10, 10), dtype=np.float)
+kernel[:8,:] = -1
+kernel[8:,:] = 1
 print(kernel.mean())
 
 effect = scipy.signal.convolve2d(img, kernel, mode='same')
@@ -32,7 +32,7 @@ effect[effect <= 0.0] = 0
 
 img = (img + 1.)/2.
 
-dst = 0.8 * img + 0.2 * effect
+dst = 0.6 * img + 0.4 * effect
 
 
 
