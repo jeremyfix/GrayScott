@@ -110,12 +110,11 @@ def make_effect(u_orig):
         
     return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
 
-def make_effect3(u_orig, w=500):
-    kernel = np.zeros((10,10), dtype=np.float)
+def make_effect3(u_orig, w=300):
+    kernel = np.zeros((11,11), dtype=np.float)
     kernel[:8,:] = -1
     kernel[8:, :] = 1
     effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
-    #effect /= effect.max()
     effect /= 30.
     effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
@@ -124,7 +123,11 @@ def make_effect3(u_orig, w=500):
     u_hires = cv2.resize(u_orig, (w, w),interpolation=cv2.INTER_CUBIC)
     u_hires[u_hires >= 0.5] = 1.
     u_hires[u_hires < 0.5 ] = 0.
-    u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=11)#scipy.signal.convolve2d(u_hires, np.ones((11,11))/121.)#, mode='same')
+    # Blur the image to get the shading
+    u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=11)
+    # Shift the shadding down right
+    u_blur = np.lib.pad(u_blur, ((2,0),(2,0)), 'constant', constant_values=1)[:w,:w]
+
 
     dst = 0.6 * u_hires + 0.4 * effect_hires
     dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
