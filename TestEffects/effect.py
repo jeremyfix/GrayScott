@@ -33,7 +33,7 @@ img_hires = cv2.resize(img, (700, 700),interpolation=cv2.INTER_CUBIC)
 img_hires[img_hires > 0.] = 1.
 img_hires[img_hires <= 0.] = 0.
 
-img_hires_blur = scipy.signal.convolve2d(img_hires, np.ones((11,11))/121., mode='same')
+img_hires_blur = scipy.ndimage.filters.uniform_filter(img_hires, size=11) #scipy.signal.convolve2d(img_hires, np.ones((11,11))/121.)#, mode='same')
 
 
 dst = 0.6 * img_hires + 0.4 * effect_hires
