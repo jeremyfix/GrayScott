@@ -49,6 +49,9 @@ class SpectralModel:
         elif(self.param_name == 'spirals'):			
             self.k = 0.050
             self.F = 0.018
+        elif(self.param_name == 'exp'):
+            self.k = 0.0594
+            self.F = 0.0460
         else:
             self.k = 0.040
             self.F = 0.060
@@ -161,7 +164,7 @@ class SpectralModel:
 
 
         vt = np.real(np.fft.ifft2(self.tf_vt))
-        vt[mask >= 0.5] = 0.0
+        vt[mask >= 0.5] = 1.0
         self.tf_vt = np.fft.fft2(vt)
         
         ut = np.real(np.fft.ifft2(self.tf_ut))
