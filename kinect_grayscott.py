@@ -30,11 +30,12 @@ run = False
 
 #
 d = 1.5
-N = 256
+width = 256
+height = 128
 dt = 10
 pattern = 'solitons'
 
-model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
+model = grayscott.SpectralModel(pattern, width, height, d=d, dt=dt, mode='ETDFD')
 
 model.init()
 
