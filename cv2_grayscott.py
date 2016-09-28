@@ -47,9 +47,11 @@ if(mode <= 3):
     d = 1.5 # The width of the domain
     N = 128 # The size of the lattice
     dt = 1. # the time step
+    raise Exception("Must adapt the scripts to handle width/height rather than N..")
 else:
     d = 1.5
-    N = 256
+    height = 128
+    width = 256
     dt = 10
 pattern = 'solitons'
 
@@ -58,7 +60,7 @@ if(mode <= 2):
 elif mode == 3:
     model = libgrayscott.GrayScott(pattern, N, d, dt)
 else:
-    model = grayscott.SpectralModel(pattern, N=N, d=d, dt=dt, mode='ETDFD')
+    model = grayscott.SpectralModel(pattern, width=width, height=height, d=d, dt=dt, mode='ETDFD')
 
 model.init()
 
@@ -110,7 +112,8 @@ def make_effect(u_orig):
         
     return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
 
-def make_effect3(u_orig, w=300):
+def make_effect3(u_orig, scale):
+    res_height, res_width = scale * u_orig.shape[0], scale * u_orig.shape[1]
     kernel = np.zeros((11,11), dtype=np.float)
     kernel[:8,:] = -1
     kernel[8:, :] = 1
@@ -118,23 +121,24 @@ def make_effect3(u_orig, w=300):
     effect /= 30.
     effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
-    effect_hires = cv2.resize(effect, (w,w), interpolation=cv2.INTER_CUBIC)
+    effect_hires = cv2.resize(effect, (res_width, res_height), interpolation=cv2.INTER_CUBIC)
 
-    u_hires = cv2.resize(u_orig, (w, w),interpolation=cv2.INTER_CUBIC)
+    u_hires = cv2.resize(u_orig, (res_width, res_height),interpolation=cv2.INTER_CUBIC)
     u_hires[u_hires >= 0.5] = 1.
     u_hires[u_hires < 0.5 ] = 0.
     # Blur the image to get the shading
     u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=11)
     # Shift the shadding down right
-    u_blur = np.lib.pad(u_blur, ((2,0),(2,0)), 'constant', constant_values=1)[:w,:w]
-
-
+    u_blur = np.lib.pad(u_blur, ((2,0),(2,0)), 'constant', constant_values=1)[:-2,:-2]
+    
     dst = 0.6 * u_hires + 0.4 * effect_hires
+    #print(dst.shape)
+    #print(u_hires.shape)
     dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
     return dst
 
 
-u = np.zeros((N, N))
+u = np.zeros((height, width))
 epoch = 0
 
 t0 = time.time()
@@ -149,7 +153,7 @@ while key != ord('q'):
 		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
         
-        u_img = make_effect3(u)
+        u_img = make_effect3(u,1)
         cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
