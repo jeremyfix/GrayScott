@@ -193,7 +193,7 @@ class SpectralModel:
         
 class Model:
 
-	def __init__(self, param_name, N, mode,d=1.,dt=0.1):
+	def __init__(self, param_name, width, height, mode,d=1.,dt=0.1):
 		self.param_name = param_name
 		if(self.param_name == 'solitons'):
 			self.k = 0.056
@@ -210,21 +210,22 @@ class Model:
 		else:
                     self.k = 0.040
                     self.F = 0.060
-		self.N = N
-		self.h = d/N		
+		self.width = width
+                self.height = height
+		self.h = d/self.width
 		self.Du = 2 * 1e-5 / self.h**2
 		self.Dv = 1e-5 / self.h**2
 		self.dt = dt
 		self.noise = 0.2
                 
-		self.ut_1 = np.zeros((self.N, self.N), dtype=float)
-		self.vt_1 = np.zeros((self.N, self.N), dtype=float)
-		self.ut = np.zeros((self.N, self.N), dtype=float)
-		self.vt = np.zeros((self.N, self.N), dtype=float)
+		self.ut_1 = np.zeros((self.height, self.width), dtype=float)
+		self.vt_1 = np.zeros((self.height, self.width), dtype=float)
+		self.ut = np.zeros((self.height, self.width), dtype=float)
+		self.vt = np.zeros((self.height, self.width), dtype=float)
 
 		self.mode = mode
 		if(self.mode == 0):
-			self.stencil = np.zeros((self.N, self.N))
+			self.stencil = np.zeros((self.height, self.width))
 			self.stencil[0,0] = -4
 			self.stencil[0,1] = 1
 			self.stencil[0,-1] = 1
@@ -236,15 +237,15 @@ class Model:
 
 
 	def init(self):
-		dN = self.N/4
+		dN = min(self.width, self.height)/4
 		self.ut_1[:,:] = 1
-		self.ut_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.5
-		self.ut_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+		self.ut_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.5
+		self.ut_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
 		self.ut_1[self.ut_1 <= 0] = 0
                 
 		self.vt_1[:,:] = 0
-		self.vt_1[(self.N/2 - dN/2): (self.N/2+dN/2+1), (self.N/2 - dN/2) : (self.N/2+dN/2+1)] = 0.25
-		self.vt_1 += self.noise * (2 * np.random.random((self.N, self.N)) - 1)
+		self.vt_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.25
+		self.vt_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
 		self.vt_1[self.vt_1 <= 0] = 0
 
                 self.vt[:,:] = self.vt_1[:,:]
@@ -296,9 +297,9 @@ if(__name__ == '__main__'):
     dt = 1.
 
     if(mode <= 2):
-        model = Model(pattern, N=N, mode=mode)
+        model = Model(pattern, width, height, mode=mode)
     elif mode == 3:
-        model = libgrayscott.GrayScott(pattern, N, d, dt)
+        model = libgrayscott.GrayScott(pattern, width, height, d, dt)
     elif mode == 4:
         model = SpectralModel(pattern, height=height, width=width)
         

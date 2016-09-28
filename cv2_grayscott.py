@@ -45,9 +45,9 @@ mode = int(sys.argv[1])
 #
 if(mode <= 3):
     d = 1.5 # The width of the domain
-    N = 128 # The size of the lattice
-    dt = 1. # the time step
-    raise Exception("Must adapt the scripts to handle width/height rather than N..")
+    height = 128 # The size of the lattice
+    width = 256
+    dt = 0.1 # the time step
 else:
     d = 1.5
     height = 128
@@ -56,9 +56,9 @@ else:
 pattern = 'solitons'
 
 if(mode <= 2):
-    model = grayscott.Model(pattern, N=N, mode=mode, d=d, dt=dt)
+    model = grayscott.Model(pattern, width=width, height=height, mode=mode, d=d, dt=dt)
 elif mode == 3:
-    model = libgrayscott.GrayScott(pattern, N, d, dt)
+    model = libgrayscott.GrayScott(pattern, width, height, d, dt)
 else:
     model = grayscott.SpectralModel(pattern, width=width, height=height, d=d, dt=dt, mode='ETDFD')
 
@@ -153,7 +153,7 @@ while key != ord('q'):
 		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
         
-        u_img = make_effect3(u,1)
+        u_img = make_effect3(u,3)
         cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
