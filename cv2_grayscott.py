@@ -35,8 +35,16 @@ print("   m : mask the reactant with a randomly generated mask")
 print("   p : save the current u potential")
 print("   f : toggle fullscreen/normal screen")
     
+
+try:
+    fullscreen_flag = cv2.WINDOW_FULLSCREEN
+    normal_flag = CV2.WINDOW_NORMAL
+except:
+    fullscreen_flag = cv2.cv.CV_WINDOW_FULLSCREEN
+    normal_flag = cv2.cv.CV_WINDOW_NORMAL
+
 cv2.namedWindow('u', cv2.WND_PROP_FULLSCREEN)
-cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, normal_flag)
 
 key = 0
 run = False
@@ -49,10 +57,11 @@ if(mode <= 3):
     width = 256
     dt = 0.1 # the time step
 else:
-    d = 1.5
+    d = 3.
     height = 128
     width = 256
     dt = 10
+display_scaling_factor = 4
 pattern = 'solitons'
 
 if(mode <= 2):
@@ -64,61 +73,16 @@ else:
 
 model.init()
 
-def make_effect2(u_orig, w=700):
-    #u = cv2.resize(u_orig, (300,300))
-    #u = u_orig.copy()
-    #u[u >= 0.5] = 1.0
-    #u[u < 0.5] = 0
-    
-    kernel = np.zeros((10,10), dtype=np.float)
-    kernel[:8,:] = -1
-    kernel[8:, :] = 1
-    effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
-    #effect /= effect.max()
-    effect /= 30.
-    effect[effect >= 1.0] = 1.0
-    effect[effect <= 0.0] = 0.0
-    dst = 0.6 * cv2.resize(u, (w,w), interpolation=cv2.INTER_CUBIC) + 0.4 * cv2.resize(effect, (w,w), interpolation=cv2.INTER_CUBIC)
-    # Edge enhancement
-    #dst = cv2.resize(dst, (500, 500))
-    #kernel = 0.25 * np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=np.float)
-    #dst = dst + scipy.signal.convolve2d(dst, kernel, mode='same')
-    #print(dst.min(), dst.max())
-    #dst[dst <= 0] = 0
-    #dst += dst.min()
-    #dst /= dst.max()
-    #dst[dst >= 1.0] = 1.0
-    #dst[dst < 0.] = 0.
-    
-    return dst#cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
-
-def make_effect(u_orig):
-    u = u_orig.copy()
-    kernel = np.zeros((5,5), dtype=np.float)
-    kernel[:3,:] = -1
-    kernel[3:, :] = 1
-    effect = scipy.signal.convolve2d(2. * (u - 0.5), kernel, mode='same')
-    effect /= effect.max()
-    effect[effect <= 0.0] = 0.0
-    dst = 0.8 * u + 0.2 * effect
-    # Edge enhancement
-    dst = cv2.resize(dst, (500, 500))
-    kernel = 0.25 * np.array([[0,1,0],[1,-4,1],[0,1,0]], dtype=np.float)
-    dst = dst + scipy.signal.convolve2d(dst, kernel, mode='same')
-    print(dst.min(), dst.max())
-    dst[dst <= 0] = 0
-    #dst += dst.min()
-    dst /= dst.max()
-        
-    return cv2.resize(dst, (1000,1000), interpolation=cv2.INTER_CUBIC)
-
-def make_effect3(u_orig, scale):
+def make_effect(u_orig, scale):
     res_height, res_width = scale * u_orig.shape[0], scale * u_orig.shape[1]
-    kernel = np.zeros((11,11), dtype=np.float)
-    kernel[:8,:] = -1
-    kernel[8:, :] = 1
+    s_kernel = 11
+    kernel = np.ones((s_kernel,s_kernel), dtype=np.float)
+    # Light coming from top left
+    kernel[:int(2./3 * s_kernel),:int(2./3 * s_kernel)] = -1
+    # Light coming from left
+    #kernel[:int(2./3 * s_kernel),:] = -1
     effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
-    effect /= 30.
+    effect /= 30. # HAND TUNED SCALING of the effect ... might need to be adapted if changing s_kernel
     effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
     effect_hires = cv2.resize(effect, (res_width, res_height), interpolation=cv2.INTER_CUBIC)
@@ -127,13 +91,11 @@ def make_effect3(u_orig, scale):
     u_hires[u_hires >= 0.5] = 1.
     u_hires[u_hires < 0.5 ] = 0.
     # Blur the image to get the shading
-    u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=11)
+    u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=5)
     # Shift the shadding down right
     u_blur = np.lib.pad(u_blur, ((2,0),(2,0)), 'constant', constant_values=1)[:-2,:-2]
     
     dst = 0.6 * u_hires + 0.4 * effect_hires
-    #print(dst.shape)
-    #print(u_hires.shape)
     dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
     return dst
 
@@ -153,7 +115,7 @@ while key != ord('q'):
 		print("FPS: %f fps" % (100 / (t1 - t0)))
 		t0 = t1
         
-        u_img = make_effect3(u,3)
+        u_img = make_effect(u, display_scaling_factor)
         cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
@@ -175,7 +137,7 @@ while key != ord('q'):
         frame_id += 1
     elif key == ord('f'):
         screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
-        if(screenmode == cv2.WINDOW_NORMAL):
-            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        if(screenmode == normal_flag):
+            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, fullscreen_flag)
         else:
-            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, normal_flag)
