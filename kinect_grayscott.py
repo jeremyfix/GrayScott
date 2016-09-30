@@ -77,6 +77,16 @@ def make_effect(u_orig, scale):
     return dst
 
 
+def insert_text(img, text):
+    img[(img.shape[0]-40):,:] = 1
+    cv2.putText(img, text, (20, img.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, 0, thickness=2)
+
+def insert_depth(depth_img, img):
+    tgt_size = (2*64, 2*48)
+    small_depth = cv2.resize(depth_img, tgt_size)
+    print(small_depth.shape)
+    img[(img.shape[0]-small_depth.shape[0]):, (img.shape[1]-small_depth.shape[1]):] = small_depth[:,:, 0]
+    return
 
 
 model = grayscott.SpectralModel(pattern, width, height, d=d, dt=dt, mode='ETDFD')
@@ -84,6 +94,7 @@ model.init()
 
 
 u = np.zeros((height, width))
+depth_img = np.zeros((2,2,3), dtype=np.float)
 epoch = 0
 can_mask = False
 
@@ -119,7 +130,11 @@ while key != ord('q'):
         u[:,:] = model.get_ut()
 	epoch += 1
 
-    cv2.imshow('u', make_effect(u, display_scaling_factor))
+    u_img = make_effect(u, display_scaling_factor)
+    insert_text(u_img, "GrayScott Reaction Diffusion")
+    insert_depth(depth_img, u_img)
+
+    cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
 
