@@ -142,7 +142,11 @@ class SpectralModel:
        
     def get_ut(self):
         return np.real(np.fft.ifft2(self.tf_ut))
+    
+    def get_vt(self):
+        return np.real(np.fft.ifft2(self.tf_vt))
 
+    
     def compute_Nuv(self, tf_u, tf_v):
         uv2 = np.fft.fft2(np.fft.ifft2(tf_u).real * (np.fft.ifft2(tf_v).real**2))
         return -uv2, uv2
