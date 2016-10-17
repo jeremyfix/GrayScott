@@ -62,7 +62,7 @@ else:
     width = 256
     dt = 10
 display_scaling_factor = 4
-pattern = 'solitons'
+pattern = 'worms'
 
 if(mode <= 2):
     model = grayscott.Model(pattern, width=width, height=height, mode=mode, d=d, dt=dt)
@@ -73,15 +73,24 @@ else:
 
 model.init()
 
+# Precompute the FFT of the kernel for speeding up the convolution
+# For lightning
+s_kernel = 11
+kernel_light = np.ones((s_kernel,s_kernel), dtype=np.float)
+kernel_light[:int(2./3 * s_kernel),:int(2./3 * s_kernel)] = -1
+mask_light = np.zeros((height, width), np.float32)
+mask_light[0:kernel_light.shape[0], 0:kernel_light.shape[1]] = kernel_light
+mask_light = np.roll(np.roll(mask_light,-(kernel_light.shape[1]//2-1), axis=1),-(kernel_light.shape[0]//2-1), axis=0)
+fft_mask_light = np.fft.rfft2(mask_light)
+# For the blur, it is fastest to use uniform_filter
+
+
 def make_effect(u_orig, scale):
     res_height, res_width = scale * u_orig.shape[0], scale * u_orig.shape[1]
-    s_kernel = 11
-    kernel = np.ones((s_kernel,s_kernel), dtype=np.float)
-    # Light coming from top left
-    kernel[:int(2./3 * s_kernel),:int(2./3 * s_kernel)] = -1
-    # Light coming from left
-    #kernel[:int(2./3 * s_kernel),:] = -1
-    effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
+
+    # Compute the lightning effect
+    effect = np.fft.irfft2(np.fft.rfft2(2.*(u_orig-0.5))* fft_mask_light)
+    
     effect /= 30. # HAND TUNED SCALING of the effect ... might need to be adapted if changing s_kernel
     effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
@@ -90,13 +99,17 @@ def make_effect(u_orig, scale):
     u_hires = cv2.resize(u_orig, (res_width, res_height),interpolation=cv2.INTER_CUBIC)
     u_hires[u_hires >= 0.5] = 1.
     u_hires[u_hires < 0.5 ] = 0.
+    
     # Blur the image to get the shading
     u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=5)
+    
     # Shift the shadding down right
     u_blur = np.lib.pad(u_blur, ((2,0),(2,0)), 'constant', constant_values=1)[:-2,:-2]
     
     dst = 0.6 * u_hires + 0.4 * effect_hires
     dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
+    dst[dst > 1] = 1
+    dst[dst < 0] = 0
     return dst
 
 
@@ -133,7 +146,7 @@ while key != ord('q'):
         model.init()
     elif key == ord('p'):
         print("Saving u-%05d.png" % frame_id)
-        cv2.imwrite("u-%05d.png" % frame_id, (255*u_img).astype(np.uint8))
+        cv2.imwrite("u-%05d.png" % frame_id, (np.minimum(255*u_img, 255)).astype(np.uint8))
         frame_id += 1
     elif key == ord('f'):
         screenmode = cv2.getWindowProperty("u", cv2.WND_PROP_FULLSCREEN)
