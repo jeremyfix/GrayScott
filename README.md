@@ -10,6 +10,10 @@ The parameters of the equation for some of the patterns are already provided.
 
 ![Solitons](https://raw.githubusercontent.com/jeremyfix/GrayScott/master/u-solitons.png)
 
+![Worms](https://raw.githubusercontent.com/jeremyfix/GrayScott/master/u-worms.png)
+
+![Spirals](https://raw.githubusercontent.com/jeremyfix/GrayScott/master/u-spirals.png)
+
 Related papers:
 - Complex Patterns in a Simple System, J.E. Pearson, Science(261), 189--192
 - A.-K. Kassam and L. N. Trefethen (2005), Fourth-order time-stepping for stiff PDEs, SIAM J. Sci. Comput. 26, 1214–1233.
