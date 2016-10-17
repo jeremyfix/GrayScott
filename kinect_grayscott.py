@@ -30,7 +30,7 @@ except:
     fullscreen_flag = cv2.cv.CV_WINDOW_FULLSCREEN
     normal_flag = cv2.cv.CV_WINDOW_NORMAL
 
-cv2.namedWindow("Depth")
+#cv2.namedWindow("Depth")
 cv2.namedWindow('u', cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
@@ -39,13 +39,13 @@ run = False
 
 #
 d = 3.0
-width = 256
-height = 128
+width = 200
+height = 100
 dt = 10
 pattern = 'spirals'
 display_scaling_factor = 4
 # The frustum for the kinect depth
-zmin = 2
+zmin = 1
 zmax = 4
 
 
@@ -78,13 +78,14 @@ def make_effect(u_orig, scale):
 
 
 def insert_text(img, text):
+    global height
     img[(img.shape[0]-40):,:] = 1
     cv2.putText(img, text, (20, img.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX, 1, 0, thickness=2)
 
 def insert_depth(depth_img, img):
     tgt_size = (2*64, 2*48)
     small_depth = cv2.resize(depth_img, tgt_size)
-    print(small_depth.shape)
+    #print(small_depth.shape)
     img[(img.shape[0]-small_depth.shape[0]):, (img.shape[1]-small_depth.shape[1]):] = small_depth[:,:, 0]
     return
 
@@ -94,10 +95,13 @@ model.init()
 
 
 u = np.zeros((height, width))
+
+depth = np.ones((height, width))
 depth_img = np.zeros((2,2,3), dtype=np.float)
-epoch = 0
 can_mask = False
 
+t0 = time.time()
+epoch = 0
 while key != ord('q'):
 
     # As soon as we get a minimum reactant, we start
@@ -107,7 +111,14 @@ while key != ord('q'):
         can_mask = True
         print("Masking begins")
     if(run):
-        if(can_mask):
+        epoch += 1
+        #print(epoch)
+        if(epoch == 100):
+            t1 = time.time()
+	    print("FPS: %f fps" % (100 / (t1 - t0)))
+	    t0 = t1
+            epoch = 0
+        if(can_mask and (epoch % 2 == 0)):
             (depth,_) = get_depth(format=freenect.DEPTH_MM)
             # Restrict to box in [zmin; zmax]
             # depth is scaled in meters, and the horizontal axis is flipped
@@ -117,18 +128,17 @@ while key != ord('q'):
             depth[depth > 1] = 0
 
             depth_img = (np.dstack((depth, depth, depth)).astype(np.float))
-            cv2.resize(depth_img, (width, height))
-            cv2.imshow('Depth', depth_img)
+            #cv2.resize(depth_img, (width, height))
+            #cv2.imshow('Depth', depth_img)
             
             depth = cv2.resize(depth.astype(np.float), (width, height))
 	    #depth = 1. - cv2.resize(depth, (N, N))
             #print(depth.min(), depth.max(), depth.mean())
             #depth = depth * 0.85 / depth.mean()
             #mask = 0.75 + 0.25 * depth
-            model.mask_reactant(depth)
+        model.mask_reactant(depth)
         model.step()
         u[:,:] = model.get_ut()
-	epoch += 1
 
     u_img = make_effect(u, display_scaling_factor)
     insert_text(u_img, "GrayScott Reaction Diffusion")

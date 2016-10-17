@@ -38,7 +38,7 @@ print("   f : toggle fullscreen/normal screen")
 
 try:
     fullscreen_flag = cv2.WINDOW_FULLSCREEN
-    normal_flag = CV2.WINDOW_NORMAL
+    normal_flag = cv2.WINDOW_NORMAL
 except:
     fullscreen_flag = cv2.cv.CV_WINDOW_FULLSCREEN
     normal_flag = cv2.cv.CV_WINDOW_NORMAL
