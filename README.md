@@ -17,6 +17,7 @@ The parameters of the equation for some of the patterns are already provided.
 Related papers:
 - Complex Patterns in a Simple System, J.E. Pearson, Science(261), 189--192
 - A.-K. Kassam and L. N. Trefethen (2005), Fourth-order time-stepping for stiff PDEs, SIAM J. Sci. Comput. 26, 1214–1233.
+- H. Montanelli and N. Bootland (2016) Solving periodic semilinear stiff pdes in 1d, 2d and 3d with exponential integrators
 
 
 Interesting links : 
