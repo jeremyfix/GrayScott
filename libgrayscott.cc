@@ -1,4 +1,5 @@
 // g++ -shared -o libgrayscott.so libgrayscott.cc `pkg-config --libs --cflags python` -lboost_python -O3 -fPIC
+// if numpy is pip installed : -I /usr/local/lib/python2.7/dist-packages/numpy/core/include
 
 #include <boost/python/extract.hpp>
 #include <boost/python/numeric.hpp>
