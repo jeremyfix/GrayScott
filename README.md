@@ -22,3 +22,8 @@ Related papers:
 
 Interesting links : 
 - http://mrob.com/pub/comp/xmorphia/
+
+See also :
+- The algorithmic beauty of sea sheels: http://www.springer.com/us/book/9783540921417
+- Bar et al 1993 : Spiral waves in a surface reaction: Model calculations 
+- Gray et al : AnAnalysisoftheBelousov-ZhabotinskiiReaction
