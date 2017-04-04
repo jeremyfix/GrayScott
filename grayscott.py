@@ -7,7 +7,7 @@ import numpy as np
 import time
 import sys
 
-import libgrayscott
+#import libgrayscott
 
 ''' 
 We consider a spatial domain of size d × d, with N × N samples
@@ -306,7 +306,7 @@ if(__name__ == '__main__'):
     if(mode <= 2):
         model = Model(pattern, width, height, mode=mode)
     elif mode == 3:
-        model = libgrayscott.GrayScott(pattern, width, height, d, dt)
+        model = None #libgrayscott.GrayScott(pattern, width, height, d, dt)
     elif mode == 4:
         model = SpectralModel(pattern, height=height, width=width)
         

@@ -14,7 +14,7 @@ import time
 import scipy
 
 import grayscott
-import libgrayscott
+#import libgrayscott
 
 if(len(sys.argv) <= 1):
     print("Usage : %s mode "% sys.argv[0])
@@ -67,7 +67,7 @@ pattern = 'solitons'
 if(mode <= 2):
     model = grayscott.Model(pattern, width=width, height=height, mode=mode, d=d, dt=dt)
 elif mode == 3:
-    model = libgrayscott.GrayScott(pattern, width, height, d, dt)
+    model = None #libgrayscott.GrayScott(pattern, width, height, d, dt)
 else:
     model = grayscott.SpectralModel(pattern, width=width, height=height, d=d, dt=dt, mode='ETDFD')
 
