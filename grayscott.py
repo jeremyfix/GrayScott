@@ -281,7 +281,72 @@ class Model:
             
 	    self.ut_1, self.vt_1  = self.ut, self.vt
 
+class ModelOptim:
 
+	def __init__(self, param_name, width, height, d=1.,dt=0.1):
+		self.param_name = param_name
+		if(self.param_name == 'solitons'):
+			self.k = 0.056
+			self.F = 0.020
+ 		elif(self.param_name == 'worms'):
+			self.k = 0.0630
+			self.F = 0.0580
+		elif(self.param_name == 'spirals'):			
+			self.k = 0.0500
+			self.F = 0.0180
+                elif(self.param_name == 'uskate'):
+                    self.k = 0.06093
+                    self.F = 0.0620
+		else:
+                    self.k = 0.040
+                    self.F = 0.060
+		self.width = width+2
+                self.height = height+2
+		self.h = d/self.width
+		self.Du = 2 * 1e-5 / self.h**2
+		self.Dv = 1e-5 / self.h**2
+		self.dt = dt
+		self.noise = 0.2
+                
+		self.ut_1 = np.zeros((self.height, self.width), dtype=float)
+		self.vt_1 = np.zeros((self.height, self.width), dtype=float)
+		self.ut = np.zeros((self.height, self.width), dtype=float)
+		self.vt = np.zeros((self.height, self.width), dtype=float)
+
+	def init(self):
+		dN = min(self.width, self.height)/4
+		self.ut_1[:,:] = 1
+		self.ut_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.5
+		self.ut_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
+		self.ut_1[self.ut_1 <= 0] = 0
+                
+		self.vt_1[:,:] = 0
+		self.vt_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.25
+		self.vt_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
+		self.vt_1[self.vt_1 <= 0] = 0
+
+                self.vt[:,:] = self.vt_1[:,:]
+                self.ut[:,:] = self.ut_1[:,:]
+
+	def laplacian(self, x):
+            return -4. * x[1:-1, 1:-1] + (x[1:-1, :-2] + x[:-2, 1:-1] + x[1:-1, 2:] + x[2:, 1:-1])
+        
+        def get_ut(self):
+                return self.ut[1:-1,1:-1]
+
+        def erase_reactant(self, center, radius):
+	    pass
+
+	def step(self):
+            uvv = self.ut * self.vt**2
+	    lu = self.laplacian(self.ut_1)
+	    lv = self.laplacian(self.vt_1)
+            Nu = -uvv + self.F * (1. - self.ut)
+            Nv = uvv - (self.F + self.k) * self.vt
+	    self.ut[1:-1, 1:-1] += self.dt * (self.Du * lu + Nu[1:-1, 1:-1])
+	    self.vt[1:-1, 1:-1] += self.dt * (self.Dv * lv + Nv[1:-1, 1:-1])
+            
+            
 
 if(__name__ == '__main__'):
 
@@ -293,12 +358,13 @@ if(__name__ == '__main__'):
         print("   2 : spatial model with ndimage.laplace in python, forward euler") # 150 fps
         print("   3 : spatial model with fast laplacian in C++, forward euler") # 400 fps
         print("   4 : spectral model in python using ETDRK4")
+        print("   5 : spatial model, forward Euler")
         sys.exit(-1)
 
     mode = int(sys.argv[1])
     
-    height = 100
-    width = 100
+    height = 256
+    width = 256
     pattern = 'worms'
     d = 1.
     dt = 1.
@@ -309,6 +375,8 @@ if(__name__ == '__main__'):
         model = None #libgrayscott.GrayScott(pattern, width, height, d, dt)
     elif mode == 4:
         model = SpectralModel(pattern, height=height, width=width)
+    elif mode == 5:
+        model = ModelOptim(pattern, width, height)
         
     model.init()
     
