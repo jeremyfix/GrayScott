@@ -66,8 +66,10 @@ class SpectralModel:
 
         #self.tf_ut_1 = np.zeros((self.N, self.N), dtype=complex)
         #self.tf_vt_1 = np.zeros((self.N, self.N), dtype=complex)
-        self.tf_ut = np.zeros((self.height, self.width), dtype=complex)
-        self.tf_vt = np.zeros((self.height, self.width), dtype=complex)
+        self.cdtype = np.complex64
+        self.fdtype = np.float32
+        self.tf_ut = np.zeros((self.height, self.width), dtype=self.cdtype)
+        self.tf_vt = np.zeros((self.height, self.width), dtype=self.cdtype)
 
         self.mode = mode
         if(not self.mode in ['ETDFD','ETDRK4']):
@@ -75,7 +77,7 @@ class SpectralModel:
             raise Exception("Unknown numerical scheme, must be ETDFD or ETDRK4")
 
         # Precompute various ETDRK4 scalar quantities
-        k1, k2 = np.meshgrid(np.arange(self.width).astype(float), np.arange(self.height).astype(float))
+        k1, k2 = np.meshgrid(np.arange(self.width).astype(float), np.arange(self.height).astype(self.fdtype))
         k1[:,self.width/2+1:] -= self.width
         k2[self.height/2+1:,:] -= self.height
 
@@ -83,6 +85,7 @@ class SpectralModel:
         k2 *= 2.0 * np.pi / self.height
 
         self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
+        print(self.Lu.dtype)
         self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
 
         self.E2u = np.exp(self.dt * self.Lu/2.)
@@ -125,7 +128,7 @@ class SpectralModel:
     def init(self):
         dN = min(self.height, self.width)/4
         
-        ut = np.zeros((self.height, self.width), dtype=float)
+        ut = np.zeros((self.height, self.width), dtype=np.float32)
         ut[:,:] = 1
         ut[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.5
         ut += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
@@ -307,11 +310,12 @@ class ModelOptim:
 		self.Dv = 1e-5 / self.h**2
 		self.dt = dt
 		self.noise = 0.2
-                
-		self.ut_1 = np.zeros((self.height, self.width), dtype=float)
-		self.vt_1 = np.zeros((self.height, self.width), dtype=float)
-		self.ut = np.zeros((self.height, self.width), dtype=float)
-		self.vt = np.zeros((self.height, self.width), dtype=float)
+
+                dtype = np.float32
+		self.ut_1 = np.zeros((self.height, self.width), dtype=dtype)
+		self.vt_1 = np.zeros((self.height, self.width), dtype=dtype)
+		self.ut = np.zeros((self.height, self.width), dtype=dtype)
+		self.vt = np.zeros((self.height, self.width), dtype=dtype)
 
 	def init(self):
 		dN = min(self.width, self.height)/4
