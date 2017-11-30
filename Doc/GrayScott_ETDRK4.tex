@@ -1,0 +1,55 @@
+\documentclass[a4paper,12pt]{extarticle}
+
+\usepackage[utf8x]{inputenc}
+\usepackage{graphicx}
+\usepackage{bbold}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amscd}
+\usepackage{graphicx}
+\usepackage{hyperref}
+
+
+\begin{document}
+
+\hrule
+\hrule
+\vspace{3mm}
+\centerline{\bf \Large GrayScott with ETD-RK4}
+\vspace{3mm}
+\hrule
+
+\section{Equations}
+
+The GrayScott reaction diffusion system reads~:
+\begin{eqnarray}
+\nonumber  \frac{\partial u}{dt} &=& D_u \nabla^2 u - u v^2 + F(1-u)\\
+\label{eq:grayscott}  \frac{\partial v}{dt} &=& D_v \nabla^2 v + u v^2 - (F+k)v
+\end{eqnarray}
+where $u[m,n](t)$ and $v[m,n](t)$ denote the concentration of two chemical species over a two dimensional layout discrete layout.\\
+
+Simulating this system could be straightforwardly done with the Forward Euler method. However, it turns out that the system has very slow dynamics and can quickly diverge if one uses a large time step $\Delta t$. Recently, \cite{Kassam2005,Cox2002} proposed a method for simulating stiff differential equations which is based simulating the system in the spectral domain with exponential euler and runge kutta 4 and a numerical stabilisation procedure for evaluating terms like $(e^z-1)/z$. In this document, we specify their algorithm in the case of the GrayScott reaction diffusion system. The code implementing their algorithm in the case of GrayScott is available online \cite{GithubJFGrayScott}.
+
+\section{GrayScott with ETD-RK4}
+
+\subsection{GrayScott in the spectral domain}
+The first step is to formulate the system of equations \eqref{eq:grayscott} in the spectral domain. We consider the spatial domain to be discrete and bounded of size $d \times d$ with $N$ points over each dimension. We denote by capital letters the discrete fourier transforms~:
+\begin{eqnarray*}
+  U[k, l] &=& TF(u)[k,l] = \sum_{m=0}^{N-1} \sum_{n=0}^{N-1} u[m,n] e^{(-2\pi i \frac{km}{d})}e^{(-2\pi i \frac{ln}{d})}\\
+  u[m,n] &=& TF^{-1}(U)[m,n] = \frac{1}{d^2}\sum_{k=0}^{N-1} \sum_{l=0}^{N-1} U[k,l] e^{(2\pi i \frac{km}{d})}e^{(2\pi i \frac{ln}{d})} \\
+  V[k, l] &=& TF(u)[k,l] =\sum_{m=0}^{N-1} \sum_{n=0}^{N-1} v[m,n] e^{(-2\pi i \frac{km}{d})}e^{(-2\pi i \frac{ln}{d})}\\
+  v[m,n] &=& TF^{-1}(V)[m,n] = \frac{1}{d^2}\sum_{k=0}^{N-1} \sum_{l=0}^{N-1} V[k,l]e^{(2\pi i \frac{km}{d})}e^{(2\pi i \frac{ln}{d})} 
+  \end{eqnarray*}
+where we follow the convention of Numpy\cite{NumpyFFT} where the direct transforms are unscaled and the inverse transforms are scaled.
+
+\subsection{Integration with exponential Euler/Runge Kutta 4}
+
+\subsection{Numerical stability}
+
+As shown in \cite{Kassam2005}, there is a numerical stability issue when evaluating the exponential terms that appear when applying exponential euler. The authors suggest a more stable numerical procedure which relies on the Cauchy integral.
+
+\bibliographystyle{plain}
+\bibliography{biblio}
+
+\end{document}
