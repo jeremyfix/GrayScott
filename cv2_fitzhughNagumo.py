@@ -50,7 +50,7 @@ mode = int(sys.argv[1])
 if(mode == 0):
     d = 1.5 # The width of the domain
     height = 128 # The size of the lattice
-    width = 64
+    width = 128
     dt = 0.06 # the time step
 else:
     d = 1.5

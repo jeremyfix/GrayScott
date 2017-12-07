@@ -143,15 +143,19 @@ class Model:
     def __init__(self, param_name, width, height,d=1.,dt=0.1):
         self.param_name = param_name
         if(self.param_name == 'labyrinth'):
+            # self.D = 0.4
+            # self.epsilon = 1.
+            # self.rho = 0.3
+            # self.R = 0.04
             self.a0 = -0.1
             self.a1 = 2
             self.epsilon = 0.05
             self.delta = 4.
         self.width = width
         self.height = height
-        self.h = d/self.width
+        #self.h = d/self.width
         self.dt = dt
-        self.noise = 0.2
+        self.noise = 0.01
         
         self.ut_1 = np.zeros((self.height, self.width), dtype=float)
         self.vt_1 = np.zeros((self.height, self.width), dtype=float)
@@ -164,16 +168,16 @@ class Model:
         dN = self.width/32
         self.ut_1[:,:] = 0
         self.ut_1[:, (self.width/2-dN):(self.width/2+dN)] = 1
-        #self.ut_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
+        self.ut_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
         self.ut_1[self.ut_1 <= 0] = 0
         for i in range(self.height):
             shift = int(5*np.exp(-(i - self.height/2.)**2/(2.*10.**2))*np.cos(i*2.*np.pi/20) + (2.0 * np.random.random() - 1.)* 3.)
             self.ut_1[i,:] = np.roll(self.ut_1[i,:], shift)
 
+        #self.ut_1 = 2*np.random.random((self.height, self.width))-1.
+        #self.vt_1 = 2*np.random.random((self.height, self.width))-1.
         
-        self.vt_1[:,:] = 0        
-        
-        self.vt[:,:] = 0
+        self.vt[:,:] = self.vt_1[:,:]
         self.ut[:,:] = self.ut_1[:,:]
         
     def laplacian(self, x):
@@ -188,8 +192,10 @@ class Model:
     def step(self):
         lu = self.laplacian(self.ut_1)
         lv = self.laplacian(self.vt_1)	
-        self.ut[:,:] = self.ut_1 + self.dt * (lu + self.ut_1 - self.ut_1**3 - self.vt_1)
-        self.vt[:,:] = self.vt_1 + self.dt * (self.delta * lv + self.epsilon * (self.ut_1 - self.a1 * self.vt_1 - self.a0))
+        self.ut[:,:] = self.ut_1 + self.dt * (lu + self.ut_1 * (1 - self.ut_1**2) - self.vt_1)
+        self.vt[:,:] = self.vt_1 + self.dt * ( self.delta * lv + self.epsilon * (self.ut_1 - self.a1 * self.vt_1 - self.a0))
+        #self.ut[:,:] = self.ut_1 + self.dt * (self.D * lu - (self.ut_1 - self.R) * (self.ut_1**2 - 1.) - self.rho * (self.vt_1 - self.ut_1))
+        #self.vt[:,:] = self.vt_1 + self.dt/self.epsilon * ( lv + self.ut_1 - self.vt_1)
         
         self.ut_1, self.vt_1  = self.ut, self.vt
 
