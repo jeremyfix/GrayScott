@@ -1,5 +1,11 @@
 # coding: utf-8
 
+# Numerical Solution of the Generalized
+# Burgers-Huxley Equation by Exponential Time
+# Differencing Scheme
+
+# rq : elle est complètement fausse mon intégrale de cauchy?!?!
+
 import numpy as np
 import scipy.signal
 import scipy.ndimage
