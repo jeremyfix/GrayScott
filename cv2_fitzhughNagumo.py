@@ -123,7 +123,8 @@ while key != ord('q'):
 	    t0 = t1
         
         #u_img = make_effect(u, display_scaling_factor)
-        cv2.imshow('u', u)
+        #print(u.min(), u.max())
+        cv2.imshow('u', (1-u)/2.)
 
     key = cv2.waitKey(1) & 0xFF
 
