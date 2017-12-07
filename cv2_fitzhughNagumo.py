@@ -50,13 +50,13 @@ mode = int(sys.argv[1])
 if(mode == 0):
     d = 1.5 # The width of the domain
     height = 128 # The size of the lattice
-    width = 128
+    width = 64
     dt = 0.06 # the time step
 else:
-    d = 3.
+    d = 1.5
     height = 128
-    width = 256
-    dt = 10
+    width = 64
+    dt = 0.0001
 display_scaling_factor = 4
 pattern = 'labyrinth'
 

@@ -37,169 +37,105 @@ References:
  - Notes on FFT-based differentiation, [Johnson, 2011]
  - Fourth-order time stepping for stiff PDEs,  [Kassam, Trefethen, 2005]
 '''
-# class SpectralModel:
-#     ''' Mode can be in ETDFD or ETDRK4 '''
-#     def __init__(self, param_name, width, height, d=1., dt=0.1, mode='ETDFD'):
-#         self.param_name = param_name
-#         if(self.param_name == 'solitons'):
-#             self.k = 0.056
-#             self.F = 0.020
-#         elif(self.param_name == 'worms'):
-#             self.k = 0.0630
-#             self.F = 0.0580
-#         elif(self.param_name == 'spirals'):			
-#             self.k = 0.050
-#             self.F = 0.018
-#         elif(self.param_name == 'exp'):
-#             self.k = 0.0594
-#             self.F = 0.0460
-#         else:
-#             self.k = 0.040
-#             self.F = 0.060
-#         self.width = width
-#         self.height = height
-#         self.h = d/self.width
-#         self.d = d
-#         self.Du = 2 * 1e-5 / self.h**2
-#         self.Dv = 1e-5 / self.h**2
-#         self.dt = dt
-#         self.noise = 0.2
+class SpectralModel:
+    ''' Mode can be in ETDFD or ETDRK4 '''
+    def __init__(self, param_name, width, height, d=1., dt=0.1, mode='ETDFD'):
+        self.param_name = param_name
+        if(self.param_name == 'labyrinth'):
+            # self.a0 = -0.1
+            # self.a1 = 2
+            # self.epsilon = 0.05
+            # self.delta = 4.
+            self.Ku = 1e-4
+            self.a = 0.1
+            self.epsilon = 0.01
+            self.beta = 0.5
+            self.gamma = 1.
+        else:
+            raise Exception("Unknown parameters")
+        self.width = width
+        self.height = height
+        #self.h = d/self.width
+        self.d = d
+        self.dt = dt
+        self.noise = 0.2
 
-#         #self.tf_ut_1 = np.zeros((self.N, self.N), dtype=complex)
-#         #self.tf_vt_1 = np.zeros((self.N, self.N), dtype=complex)
-#         self.cdtype = np.complex64
-#         self.fdtype = np.float32
-#         self.tf_ut = np.zeros((self.height, self.width), dtype=self.cdtype)
-#         self.tf_vt = np.zeros((self.height, self.width), dtype=self.cdtype)
+        self.cdtype = np.complex64
+        self.fdtype = np.float32
+        self.tf = np.zeros((2, self.height, self.width), dtype=self.cdtype)
 
-#         self.mode = mode
-#         if(not self.mode in ['ETDFD','ETDRK4']):
-#             print("The numerical scheme you mentioned is not implemented")
-#             raise Exception("Unknown numerical scheme, must be ETDFD or ETDRK4")
+        self.mode = mode
+        if(not self.mode in ['ETDFD']):
+            print("The numerical scheme you mentioned is not implemented")
+            raise Exception("Unknown numerical scheme, must be ETDFD")
 
-#         # Precompute various ETDRK4 scalar quantities
-#         k1, k2 = np.meshgrid(np.arange(self.width).astype(float), np.arange(self.height).astype(self.fdtype))
-#         k1[:,self.width/2+1:] -= self.width
-#         k2[self.height/2+1:,:] -= self.height
+        # Precompute various ETDRK4 scalar quantities
+        k1, k2 = np.meshgrid(np.arange(self.width).astype(float), np.arange(self.height).astype(self.fdtype))
+        k1[:,self.width/2+1:] -= self.width
+        k2[self.height/2+1:,:] -= self.height
 
-#         k1 *= 2.0 * np.pi / self.width
-#         k2 *= 2.0 * np.pi / self.height
+        k1 *= 2.0 * np.pi / self.width
+        k2 *= 2.0 * np.pi / self.height
 
-#         self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
-#         print(self.Lu.dtype)
-#         self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
-
-#         self.E2u = np.exp(self.dt * self.Lu/2.)
-#         self.Eu = self.E2u ** 2
+        k = -(k1**2 + k2**2)
         
-#         self.E2v = np.exp(self.dt * self.Lv/2.)
-#         self.Ev = self.E2v ** 2
-
-#         M = 16 # Nb of points for complex means
-#         r = (np.exp(1j * np.pi * (np.arange(M)+0.5)/M)).reshape((1, M))
-#         # Generate the points along the unit circle contour over which to compute the mean
-#         LRu = (self.dt * self.Lu).reshape((self.width*self.height, 1)) + r
-#         LRv = (self.dt * self.Lv).reshape((self.width*self.height, 1)) + r
         
-#         # The matrix for integrating the constant F term in the equation of u
-#         self.F2u = -np.real(np.mean(self.dt * (1. - np.exp(LRu/2.))/LRu, axis=1).reshape((self.height, self.width)))
-#         self.F2u[1:,:] = 0
-#         self.F2u[:,1:] = 0
-#         self.Fu = -np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.height, self.width)))
-#         self.Fu[1:,:] = 0
-#         self.Fu[:,1:] = 0
-#         if(mode == 'ETDFD'):
-#             self.FNu = -np.real(np.mean(self.dt * (1. - np.exp(LRu))/LRu, axis=1).reshape((self.height, self.width)))
-#             self.FNv = -np.real(np.mean(self.dt * (1. - np.exp(LRv))/LRv, axis=1).reshape((self.height, self.width)))
-#         elif(mode == 'ETDRK4'): 
-#             LRu_2 = LRu**2.
-#             LRu_3 = LRu**3.
-#             self.Qu = np.real(np.mean(self.dt * (np.exp(LRu/2.) - 1.) / LRu, axis=1).reshape((self.height, self.width)))
-#             self.f1u = np.real(np.mean(self.dt * (-4. - LRu + np.exp(LRu) * (4. - 3 * LRu + LRu_2)) / LRu_3, axis=1).reshape((self.height, self.width)))
-#             self.f2u = np.real(np.mean(self.dt * 2. * (2. + LRu + np.exp(LRu) * (-2. + LRu)) / LRu_3, axis=1).reshape((self.height, self.width)))
-#             self.f3u = np.real(np.mean(self.dt * (-4. - 3 * LRu - LRu_2 + np.exp(LRu) * (4. - LRu)) / LRu_3, axis=1).reshape((self.height, self.width)))
+        self.E = np.zeros((self.height, self.width, 2, 2))
+        self.FN = np.zeros((self.height, self.width, 2, 2))
+        for i in range(self.height):
+            for j in range(self.width):
+                Luv2x2 = np.zeros((2, 2))
+                # Luv2x2[0, 0] = 1 + k[i, j]
+                # Luv2x2[0, 1] = -1
+                # Luv2x2[1, 0] = self.epsilon
+                # Luv2x2[1, 1] = -self.epsilon * self.a1 + self.delta * k[i,j]
+                Luv2x2[0, 0] = -self.a + self.Ku *  k[i, j]
+                Luv2x2[0, 1] = -1
+                Luv2x2[1, 0] = self.epsilon * self.beta
+                Luv2x2[1, 1] = -self.epsilon * self.gamma
 
-#             LRv_2 = LRv**2.
-#             LRv_3 = LRv**3.
-#             self.Qv = np.real(np.mean(self.dt * (np.exp(LRv/2.) - 1.) / LRv, axis=1).reshape((self.height, self.width)))
-#             self.f1v = np.real(np.mean(self.dt * (-4. - LRv + np.exp(LRv) * (4. - 3 * LRv + LRv_2)) / LRv_3, axis=1).reshape((self.height, self.width)))
-#             self.f2v = np.real(np.mean(self.dt * 2. * (2. + LRv + np.exp(LRv) * (-2. + LRv)) / LRv_3, axis=1).reshape((self.height, self.width)))
-#             self.f3v = np.real(np.mean(self.dt * (-4. - 3 * LRv - LRv_2 + np.exp(LRv) * (4. - LRv)) / LRv_3, axis=1).reshape((self.height, self.width)))
-
-#     def init(self):
-#         dN = min(self.height, self.width)/4
+                
+                self.E[i, j, :, :] = np.exp(self.dt * Luv2x2)
+                self.FN[i, j, :, :] = np.dot(np.linalg.inv(Luv2x2), self.E[i, j, :, :] - np.eye(2))
+    
+    def init(self):
+        dN = self.width/32.
         
-#         ut = np.zeros((self.height, self.width), dtype=np.float32)
-#         ut[:,:] = 1
-#         ut[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.5
-#         ut += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
-#         ut[ut <= 0] = 0
+        ut = np.zeros((self.height, self.width), dtype=np.float32)
+        ut[:, (self.width/2-dN):(self.width/2+dN)] = 1.
+        ut[ut <= 0] = 0
+        for i in range(self.height):
+            shift = int(5*np.exp(-(i - self.height/2.)**2/(2.*10.**2))*np.cos(i*2.*np.pi/20) + (2.0 * np.random.random() - 1.)* 3.)
+            ut[i,:] = np.roll(ut[i,:], shift)
 
-#         vt = np.zeros((self.height, self.width), dtype=float)
-#         vt[:,:] = 0
-#         vt[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.25
-#         vt += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
-#         vt[vt <= 0] = 0
-        
-#         self.tf_ut = np.fft.fft2(ut)
-#         self.tf_vt = np.fft.fft2(vt)
+        vt = np.zeros((self.height, self.width), dtype=float)
+
+        self.tf[0, :, :] = np.fft.fft2(ut)
+        self.tf[1, :, :] = np.fft.fft2(vt)
        
-#     def get_ut(self):
-#         return np.real(np.fft.ifft2(self.tf_ut))
+    def get_ut(self):
+        return np.real(np.fft.ifft2(self.tf[0, :, :]))
     
-#     def get_vt(self):
-#         return np.real(np.fft.ifft2(self.tf_vt))
+    def get_vt(self):
+        return np.real(np.fft.ifft2(self.tf[1, :, :]))
 
     
-#     def compute_Nuv(self, tf_u, tf_v):
-#         uv2 = np.fft.fft2(np.fft.ifft2(tf_u).real * (np.fft.ifft2(tf_v).real**2))
-#         return -uv2, uv2
-
-#     # Erase the reactant in a box
-#     def erase_reactant(self, center, radius):
-#         vt =np.real(np.fft.ifft2(self.tf_vt))
-#         vt[(center[0]-radius):(center[0]+radius), (center[1]-radius):(center[1]+radius)] = 0
-#         self.tf_vt = np.fft.fft2(vt)      
-
-#     # Mask the reactant,
-#     # mask.shape = self.height, self.width
-#     # mask.dtype = float
-#     # mask_ij in [0, 1]
-#     def mask_reactant(self, mask):
-#         #vt =np.real(np.fft.ifft2(self.tf_vt))
-#         #vt = vt * mask
-#         #self.tf_vt = np.fft.fft2(vt)
-
-
-#         vt = np.real(np.fft.ifft2(self.tf_vt))
-#         vt[mask >= 0.5] = 1.0
-#         self.tf_vt = np.fft.fft2(vt)
+    def compute_Nuv(self):
+        u = np.fft.ifft2(self.tf[0, :, :]).real
+        Nu = (1. + self.a) * u**2 - u**3
+        Nv = np.zeros((self.height, self.width))#-self.epsilon * self.delta * np.fft.fft2(np.ones((self.height, self.width)))
         
-#         ut = np.real(np.fft.ifft2(self.tf_ut))
-#         ut[mask >= 0.5] = 0.0
-#         self.tf_ut = np.fft.fft2(ut)
-
-    
-    
-#     def step(self):
-#         if(self.mode == 'ETDFD'):
-#             Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)
-#             self.tf_ut = self.Eu * self.tf_ut + self.Fu * self.F * self.width * self.height + self.FNu * Nu 
-#             self.tf_vt = self.Ev * self.tf_vt + self.FNv * Nv 
-#         elif(self.mode == 'ETDRK4'):
-#             Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)
-#             au = self.E2u * self.tf_ut + self.F2u * self.F *self.width*self.height+ self.Qu * Nu
-#             av = self.E2v * self.tf_vt + self.Qv * Nv
-#             Nau, Nav = self.compute_Nuv(au, av)
-#             bu = self.E2u * self.tf_ut + self.F2u * self.F * self.width * self.height + self.Qu * Nau
-#             bv = self.E2v * self.tf_vt + self.Qv * Nav
-#             Nbu, Nbv = self.compute_Nuv(bu, bv)
-#             cu = self.E2u * au + self.F2u * self.F * self.width * self.height + self.Qu * (2. * Nbu - Nu)
-#             cv = self.E2v * av + self.Qv * (2. * Nbv - Nv)
-#             Ncu, Ncv = self.compute_Nuv(cu, cv)
-
-#             self.tf_ut = self.Eu * self.tf_ut + self.Fu * self.F * self.width * self.height + self.f1u * Nu + self.f2u * (Nau + Nbu) + self.f3u * Ncu
-#             self.tf_vt = self.Ev * self.tf_vt + self.f1v * Nv + self.f2v * (Nav + Nbv) + self.f3v * Ncv
+        #Nu = np.fft.fft2(u**3)
+        #Nv = -self.epsilon * self.a0 * np.fft.fft2(np.ones((self.height, self.width)))
+        return np.stack((Nu, Nv), axis=0)
+      
+    def step(self):
+        u = self.get_ut()
+        print("bef %f %f"%(u.min(), u.max()))
+        Nuv = self.compute_Nuv()
+        for i in range(self.height):
+            for j in range(self.width):
+                self.tf[:, i, j] = np.dot(self.E[i, j, :, :], self.tf[:,i, j]) + np.dot(self.FN[i, j, :, :], Nuv[:, i, j])
 
         
 class Model:
@@ -271,16 +207,16 @@ if(__name__ == '__main__'):
 
     mode = int(sys.argv[1])
     
-    height = 256
-    width = 256
+    height = 128
+    width = 128
     pattern = 'labyrinth'
     d = 1.
-    dt = 0.01
+    dt = 0.001
 
     if(mode == 0):
         model = Model(pattern, width, height)
     elif mode == 1:
-        model = None #SpectralModel(pattern, height=height, width=width)
+        model = SpectralModel(pattern, height=height, width=width)
 
     model.init()
     
