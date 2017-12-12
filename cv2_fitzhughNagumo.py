@@ -55,8 +55,8 @@ if(mode == 0):
 else:
     d = 1.5
     height = 128
-    width = 64
-    dt = 0.0001
+    width = 128
+    dt = 0.01
 display_scaling_factor = 4
 pattern = 'labyrinth'
 
@@ -116,11 +116,11 @@ while key != ord('q'):
     if(run): 
         model.step()
         u[:,:] = model.get_ut()
-	epoch += 1
-	if(epoch % 100 == 0):
-	    t1 = time.time()
-	    print("FPS: %f fps  / t = %f" % (100 / (t1 - t0), epoch * dt))
-	    t0 = t1
+        epoch += 1
+        if(epoch % 100 == 0):
+            t1 = time.time()
+            print("FPS: %f fps  / t = %f" % (100 / (t1 - t0), epoch * dt))
+            t0 = t1
         
         #u_img = make_effect(u, display_scaling_factor)
         #print(u.min(), u.max())

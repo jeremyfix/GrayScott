@@ -79,13 +79,15 @@ class SpectralModel:
         # Precompute various ETDRK4 scalar quantities
         k1, k2 = np.meshgrid(np.arange(self.width).astype(float), np.arange(self.height).astype(self.fdtype))
         k1[:,self.width/2+1:] -= self.width
+        #print(k1)
         k2[self.height/2+1:,:] -= self.height
-
+        k1[:, 0] = 0
+        k2[0, :] = 0
+        
         k1 *= 2.0 * np.pi / self.width
         k2 *= 2.0 * np.pi / self.height
 
         self.Lu = -(self.Du * (k1**2 + k2**2) + self.F)
-        print(self.Lu.dtype)
         self.Lv = -(self.Dv * (k1**2 + k2**2) + self.F + self.k)
 
         self.E2u = np.exp(self.dt * self.Lu/2.)
@@ -203,86 +205,86 @@ class SpectralModel:
         
 class Model:
 
-	def __init__(self, param_name, width, height, mode,d=1.,dt=0.1):
-		self.param_name = param_name
-		if(self.param_name == 'solitons'):
-			self.k = 0.056
-			self.F = 0.020
- 		elif(self.param_name == 'worms'):
-			self.k = 0.0630
-			self.F = 0.0580
-		elif(self.param_name == 'spirals'):			
-			self.k = 0.0500
-			self.F = 0.0180
-                elif(self.param_name == 'uskate'):
-                    self.k = 0.06093
-                    self.F = 0.0620
-		else:
-                    self.k = 0.040
-                    self.F = 0.060
-		self.width = width
-                self.height = height
-		self.h = d/self.width
-		self.Du = 2 * 1e-5 / self.h**2
-		self.Dv = 1e-5 / self.h**2
-		self.dt = dt
-		self.noise = 0.2
-                
-		self.ut_1 = np.zeros((self.height, self.width), dtype=float)
-		self.vt_1 = np.zeros((self.height, self.width), dtype=float)
-		self.ut = np.zeros((self.height, self.width), dtype=float)
-		self.vt = np.zeros((self.height, self.width), dtype=float)
+    def __init__(self, param_name, width, height, mode,d=1.,dt=0.1):
+        self.param_name = param_name
+        if(self.param_name == 'solitons'):
+            self.k = 0.056
+            self.F = 0.020
+        elif(self.param_name == 'worms'):
+            self.k = 0.0630
+            self.F = 0.0580
+        elif(self.param_name == 'spirals'):                     
+            self.k = 0.0500
+            self.F = 0.0180
+        elif(self.param_name == 'uskate'):
+            self.k = 0.06093
+            self.F = 0.0620
+        else:
+            self.k = 0.040
+            self.F = 0.060
+        self.width = width
+        self.height = height
+        self.h = d/self.width
+        self.Du = 2 * 1e-5 / self.h**2
+        self.Dv = 1e-5 / self.h**2
+        self.dt = dt
+        self.noise = 0.2
+        
+        self.ut_1 = np.zeros((self.height, self.width), dtype=float)
+        self.vt_1 = np.zeros((self.height, self.width), dtype=float)
+        self.ut = np.zeros((self.height, self.width), dtype=float)
+        self.vt = np.zeros((self.height, self.width), dtype=float)
+        
+        self.mode = mode
+        if(self.mode == 0):
+            self.stencil = np.zeros((self.height, self.width))
+            self.stencil[0,0] = -4
+            self.stencil[0,1] = 1
+            self.stencil[0,-1] = 1
+            self.stencil[1,0] = 1
+            self.stencil[-1,0] = 1
+            self.fft_mask = np.fft.rfft2(self.stencil)
+        elif(self.mode == 1):
+            self.stencil = np.array([[0, 1., 0], [1., -4., 1.], [0, 1., 0]], dtype=float)
 
-		self.mode = mode
-		if(self.mode == 0):
-			self.stencil = np.zeros((self.height, self.width))
-			self.stencil[0,0] = -4
-			self.stencil[0,1] = 1
-			self.stencil[0,-1] = 1
-			self.stencil[1,0] = 1
-			self.stencil[-1,0] = 1
-			self.fft_mask = np.fft.rfft2(self.stencil)
-		elif(self.mode == 1):
-			self.stencil = np.array([[0, 1., 0], [1., -4., 1.], [0, 1., 0]], dtype=float)
 
+    def init(self):
+        dN = min(self.width, self.height)/4
+        self.ut_1[:,:] = 1
+        self.ut_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.5
+        self.ut_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
+        self.ut_1[self.ut_1 <= 0] = 0
+        
+        self.vt_1[:,:] = 0
+        self.vt_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.25
+        self.vt_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
+        self.vt_1[self.vt_1 <= 0] = 0
+        
+        self.vt[:,:] = self.vt_1[:,:]
+        self.ut[:,:] = self.ut_1[:,:]
+        
+    def laplacian(self, x):
+	if(self.mode == 0):
+	    return np.fft.irfft2(np.fft.rfft2(x)*self.fft_mask)
+	elif(self.mode == 1):
+	    return scipy.ndimage.convolve(x, self.stencil, mode='wrap')
+	elif(self.mode == 2):
+	    return scipy.ndimage.laplace(x, mode='wrap')
 
-	def init(self):
-		dN = min(self.width, self.height)/4
-		self.ut_1[:,:] = 1
-		self.ut_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.5
-		self.ut_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
-		self.ut_1[self.ut_1 <= 0] = 0
-                
-		self.vt_1[:,:] = 0
-		self.vt_1[(self.height/2 - dN/2): (self.height/2+dN/2+1), (self.width/2 - dN/2) : (self.width/2+dN/2+1)] = 0.25
-		self.vt_1 += self.noise * (2 * np.random.random((self.height, self.width)) - 1)
-		self.vt_1[self.vt_1 <= 0] = 0
+    def get_ut(self):
+        return self.ut
 
-                self.vt[:,:] = self.vt_1[:,:]
-                self.ut[:,:] = self.ut_1[:,:]
+    def erase_reactant(self, center, radius):
+	pass
 
-	def laplacian(self, x):
-		if(self.mode == 0):
-			return np.fft.irfft2(np.fft.rfft2(x)*self.fft_mask)
-		elif(self.mode == 1):
-			return scipy.ndimage.convolve(x, self.stencil, mode='wrap')
-		elif(self.mode == 2):
-			return scipy.ndimage.laplace(x, mode='wrap')
-
-        def get_ut(self):
-                return self.ut
-
-        def erase_reactant(self, center, radius):
-	    pass
-
-	def step(self):
-	    uvv = self.ut_1 * self.vt_1**2
-	    lu = self.laplacian(self.ut_1)
-	    lv = self.laplacian(self.vt_1)	
-	    self.ut[:,:] = self.ut_1 + self.dt * (self.Du * lu - uvv + self.F*(1-self.ut_1))
-	    self.vt[:,:] = self.vt_1 + self.dt * (self.Dv * lv + uvv - (self.F + self.k) * self.vt_1)
-            
-	    self.ut_1, self.vt_1  = self.ut, self.vt
+    def step(self):
+	uvv = self.ut_1 * self.vt_1**2
+	lu = self.laplacian(self.ut_1)
+	lv = self.laplacian(self.vt_1)	
+	self.ut[:,:] = self.ut_1 + self.dt * (self.Du * lu - uvv + self.F*(1-self.ut_1))
+	self.vt[:,:] = self.vt_1 + self.dt * (self.Dv * lv + uvv - (self.F + self.k) * self.vt_1)
+        
+	self.ut_1, self.vt_1  = self.ut, self.vt
 
 class ModelOptim:
 

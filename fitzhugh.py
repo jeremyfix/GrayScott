@@ -12,6 +12,7 @@ import scipy.ndimage
 import numpy as np
 import time
 import sys
+from scipy.special import factorial
 
 
 ''' 
@@ -48,15 +49,15 @@ class SpectralModel:
     def __init__(self, param_name, width, height, d=1., dt=0.1, mode='ETDFD'):
         self.param_name = param_name
         if(self.param_name == 'labyrinth'):
-            # self.a0 = -0.1
-            # self.a1 = 2
-            # self.epsilon = 0.05
-            # self.delta = 4.
-            self.Ku = 1e-4
-            self.a = 0.1
-            self.epsilon = 0.01
-            self.beta = 0.5
-            self.gamma = 1.
+            self.a0 = 0 #-0.1
+            self.a1 = 2
+            self.epsilon = 0.05
+            self.delta = 4.
+            # self.Ku = 1e-4
+            # self.a = 0.1
+            # self.epsilon = 0.01
+            # self.beta = 0.5
+            # self.gamma = 1.
         else:
             raise Exception("Unknown parameters")
         self.width = width
@@ -79,7 +80,9 @@ class SpectralModel:
         k1, k2 = np.meshgrid(np.arange(self.width).astype(float), np.arange(self.height).astype(self.fdtype))
         k1[:,self.width/2+1:] -= self.width
         k2[self.height/2+1:,:] -= self.height
-
+        k1[:,0] = 0
+        k2[0,:] = 0
+        
         k1 *= 2.0 * np.pi / self.width
         k2 *= 2.0 * np.pi / self.height
 
@@ -95,14 +98,22 @@ class SpectralModel:
                 # Luv2x2[0, 1] = -1
                 # Luv2x2[1, 0] = self.epsilon
                 # Luv2x2[1, 1] = -self.epsilon * self.a1 + self.delta * k[i,j]
-                Luv2x2[0, 0] = -self.a + self.Ku *  k[i, j]
+                Luv2x2[0, 0] = 1 + 0.1 * k[i, j]
                 Luv2x2[0, 1] = -1
-                Luv2x2[1, 0] = self.epsilon * self.beta
-                Luv2x2[1, 1] = -self.epsilon * self.gamma
+                Luv2x2[1, 0] = self.epsilon
+                Luv2x2[1, 1] = -self.epsilon * self.a1 + k[i,j]
+                # Luv2x2[0, 0] = -self.a + self.Ku *  k[i, j]
+                # Luv2x2[0, 1] = -1
+                # Luv2x2[1, 0] = self.epsilon * self.beta
+                # Luv2x2[1, 1] = -self.epsilon * self.gamma
 
                 
                 self.E[i, j, :, :] = np.exp(self.dt * Luv2x2)
-                self.FN[i, j, :, :] = np.dot(np.linalg.inv(Luv2x2), self.E[i, j, :, :] - np.eye(2))
+                # We compute (self.dt * Luv2x2)^-1 * exp(self.dt * Luv2x2) - I) = dt * sum_(i>=1) (self.dt * Luv2x2)^i/(i+1)!
+                #for i in range(1,5):
+                #    self.FN[i, j, :, :] += self.dt * ((self.dt * Luv2x2)/factorial(i+1))
+                #    Luv2x2 = np.dot(Luv2x2 , Luv2x2 )
+                self.FN[i, j, :, :] = np.dot(self.E[i, j, :, :] - np.eye(2), np.linalg.inv(Luv2x2))
     
     def init(self):
         dN = self.width/32.
@@ -128,11 +139,11 @@ class SpectralModel:
     
     def compute_Nuv(self):
         u = np.fft.ifft2(self.tf[0, :, :]).real
-        Nu = (1. + self.a) * u**2 - u**3
-        Nv = np.zeros((self.height, self.width))#-self.epsilon * self.delta * np.fft.fft2(np.ones((self.height, self.width)))
+        #Nu = (1. + self.a) * u**2 - u**3
+        #Nv = np.zeros((self.height, self.width))#-self.epsilon * self.delta * np.fft.fft2(np.ones((self.height, self.width)))
         
-        #Nu = np.fft.fft2(u**3)
-        #Nv = -self.epsilon * self.a0 * np.fft.fft2(np.ones((self.height, self.width)))
+        Nu = -np.fft.fft2(u**3)
+        Nv = -self.epsilon * self.a0 * np.fft.fft2(np.ones((self.height, self.width)))
         return np.stack((Nu, Nv), axis=0)
       
     def step(self):
@@ -149,10 +160,6 @@ class Model:
     def __init__(self, param_name, width, height,d=1.,dt=0.1):
         self.param_name = param_name
         if(self.param_name == 'labyrinth'):
-            # self.D = 0.4
-            # self.epsilon = 1.
-            # self.rho = 0.3
-            # self.R = 0.04
             self.a0 = -0.1
             self.a1 = 2
             self.epsilon = 0.05
@@ -200,8 +207,6 @@ class Model:
         lv = self.laplacian(self.vt_1)	
         self.ut[:,:] = self.ut_1 + self.dt * (lu + self.ut_1 * (1 - self.ut_1**2) - self.vt_1)
         self.vt[:,:] = self.vt_1 + self.dt * ( self.delta * lv + self.epsilon * (self.ut_1 - self.a1 * self.vt_1 - self.a0))
-        #self.ut[:,:] = self.ut_1 + self.dt * (self.D * lu - (self.ut_1 - self.R) * (self.ut_1**2 - 1.) - self.rho * (self.vt_1 - self.ut_1))
-        #self.vt[:,:] = self.vt_1 + self.dt/self.epsilon * ( lv + self.ut_1 - self.vt_1)
         
         self.ut_1, self.vt_1  = self.ut, self.vt
 
