@@ -134,10 +134,10 @@ while key != ord('q'):
     key = cv2.waitKey(1) & 0xFF
 
     if(key == ord('c')):
-        c = (random.randint(0, N-1), random.randint(0, N-1))
-        model.erase_reactant(c , N/8)
+        c = (random.randint(0, height-1), random.randint(0, width-1))
+        model.erase_reactant(c, height/8)
     elif(key == ord('m')):
-        mask = 0.75 + 0.25*np.random.random((N, N))
+        mask = 0.75 + 0.25*np.random.random((height, width))
         model.mask_reactant(mask)
     elif key == ord('s'):
         run = not run
