@@ -138,15 +138,14 @@ frame_id = 0
 while key != ord('q'):
     if(run):
         model.step()
-        u[:, :] = model.get_ut()
         epoch += 1
         if(epoch % 100 == 0):
                 t1 = time.time()
                 print("FPS: %f fps" % (100 / (t1 - t0)))
                 t0 = t1
 
-        u_img = make_effect(u, display_scaling_factor)
-        cv2.imshow('u', u_img)
+    u_img = make_effect(model.get_ut(), display_scaling_factor)
+    cv2.imshow('u', u_img)
 
     key = cv2.waitKey(1) & 0xFF
 
