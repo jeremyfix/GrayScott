@@ -58,8 +58,8 @@ if(mode <= 3):
     dt = 0.1  # the time step
 else:
     d = 3.
-    height = 128
-    width = 256
+    height = 100
+    width = 200
     dt = 10
 display_scaling_factor = 4
 pattern = 'worms'
