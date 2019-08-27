@@ -367,22 +367,35 @@ class ModelOptim:
 class ThreadedModel(Thread):
 
     def __init__(self, model):
+        super(ThreadedModel, self).__init__()
         self.model = model
         self.mutex = Lock()
-        self.stop = False
+        self.running = True
 
-    def should_stop(self):
+    def init(self):
         with self.mutex:
-            return self.stop
+            self.model.init()
+
+    def get_ut(self):
+        with self.mutex:
+            return self.model.get_ut().copy()
+
+    def erase_reactant(self, center, radius):
+        with self.mutex:
+            self.model.erase_reactant(center, radius)
+
+    def keep_running(self):
+        with self.mutex:
+            return self.running
 
     def run(self):
-        while not self.should_stop():
+        while self.keep_running():
             with self.mutex:
                 self.model.step()
 
     def stop(self):
         with self.mutex:
-            self.stop = True
+            self.running = False
 
 
 def test_basic(model):
@@ -401,7 +414,18 @@ def test_basic(model):
 
 
 def test_thread(model):
-    pass
+    model = ThreadedModel(model)
+
+    model.init()
+
+    model.start()
+
+    # Wait in the main thread
+    time.sleep(2)
+    ut = model.get_ut()
+
+    model.stop()
+    model.join()
 
 
 if(__name__ == '__main__'):
@@ -438,6 +462,5 @@ if(__name__ == '__main__'):
     elif mode == 5:
         model = ModelOptim(pattern, width, height)
 
-    test_basic(model)
+    # test_basic(model)
     test_thread(model)
-
