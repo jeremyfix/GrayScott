@@ -97,11 +97,15 @@ fft_mask_light = np.fft.rfft2(mask_light)
 
 def make_effect(u_orig, scale):
     res_height, res_width = scale * u_orig.shape[0], scale * u_orig.shape[1]
-
-    # Compute the lightning effect
-    effect = np.fft.irfft2(np.fft.rfft2(2.*(u_orig-0.5)) * fft_mask_light)
-
-    effect /= 30.  # HAND TUNED SCALING of the effect ... might need to be adapted if changing s_kernel
+    s_kernel = 11
+    kernel = np.ones((s_kernel, s_kernel), dtype=np.float)
+    # Light coming from top left
+    kernel[:int(2./3 * s_kernel), :int(2./3 * s_kernel)] = -1
+    # Light coming from left
+    # kernel[:int(2./3 * s_kernel), :] = -1
+    effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
+    # HAND TUNED SCALING of the effect ...
+    # might need to be adapted if changing s_kernel    effect /= 30.
     effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
     effect_hires = cv2.resize(effect,
@@ -113,10 +117,8 @@ def make_effect(u_orig, scale):
                          interpolation=cv2.INTER_CUBIC)
     u_hires[u_hires >= 0.5] = 1.
     u_hires[u_hires < 0.5] = 0.
-
     # Blur the image to get the shading
     u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=5)
-
     # Shift the shadding down right
     u_blur = np.lib.pad(u_blur,
                         ((2, 0), (2, 0)),
@@ -125,8 +127,6 @@ def make_effect(u_orig, scale):
 
     dst = 0.6 * u_hires + 0.4 * effect_hires
     dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
-    dst[dst > 1] = 1
-    dst[dst < 0] = 0
     return dst
 
 
