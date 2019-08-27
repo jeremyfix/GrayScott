@@ -5,7 +5,7 @@ import scipy.signal
 import scipy.ndimage
 import time
 import sys
-import threading
+from threading import Thread, Lock
 
 # import libgrayscott
 
@@ -364,6 +364,46 @@ class ModelOptim:
         self.vt[1:-1, 1:-1] += self.dt * (self.Dv * lv + Nv[1:-1, 1:-1])
 
 
+class ThreadedModel(Thread):
+
+    def __init__(self, model):
+        self.model = model
+        self.mutex = Lock()
+        self.stop = False
+
+    def should_stop(self):
+        with self.mutex:
+            return self.stop
+
+    def run(self):
+        while not self.should_stop():
+            with self.mutex:
+                self.model.step()
+
+    def stop(self):
+        with self.mutex:
+            self.stop = True
+
+
+def test_basic(model):
+    model.init()
+
+    epoch = 0
+    t0 = time.time()
+
+    while True:
+        model.step()
+        epoch += 1
+        if(epoch % 500 == 0):
+            t1 = time.time()
+            print("FPS : %f f/s" % (500 / (t1 - t0)))
+            t0 = t1
+
+
+def test_thread(model):
+    pass
+
+
 if(__name__ == '__main__'):
 
     if(len(sys.argv) <= 1):
@@ -398,15 +438,6 @@ if(__name__ == '__main__'):
     elif mode == 5:
         model = ModelOptim(pattern, width, height)
 
-    model.init()
+    test_basic(model)
+    test_thread(model)
 
-    epoch = 0
-    t0 = time.time()
-
-    while True:
-        model.step()
-        epoch += 1
-        if(epoch % 500 == 0):
-            t1 = time.time()
-            print("FPS : %f f/s" % (500 / (t1 - t0)))
-            t0 = t1
