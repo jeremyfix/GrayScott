@@ -105,7 +105,8 @@ def make_effect(u_orig, scale):
     # kernel[:int(2./3 * s_kernel), :] = -1
     effect = scipy.signal.convolve2d(2. * (u_orig - 0.5), kernel, mode='same')
     # HAND TUNED SCALING of the effect ...
-    # might need to be adapted if changing s_kernel    effect /= 30.
+    # might need to be adapted if changing s_kernel
+    effect /= 30.
     effect[effect >= 1.0] = 1.0
     effect[effect <= 0.0] = 0.0
     effect_hires = cv2.resize(effect,
