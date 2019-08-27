@@ -26,6 +26,10 @@ if(len(sys.argv) <= 1):
     print("   4 : spectral model in python using ETDRK4")
     sys.exit(-1)
 
+print("\n Important : the windows is not always correctly resized,\
+you might need to resize it manually \
+so that the values are fully displayed\n")
+
 print(" Press : ")
 print("   s : start/pause")
 print("   i : reinitialize the concentrations")
