@@ -159,6 +159,8 @@ class SpectralModel:
         self.tf_ut = np.fft.fft2(ut)
         self.tf_vt = np.fft.fft2(vt)
 
+        self.mask = np.zeros_like(ut)
+
     def get_ut(self):
         return np.real(np.fft.ifft2(self.tf_ut))
 
@@ -179,19 +181,23 @@ class SpectralModel:
     # mask.shape = self.height, self.width
     # mask.dtype = float
     # mask_ij in [0, 1]
-    def mask_reactant(self, mask):
+    def set_mask(self, mask):
+        self.mask = mask
+
+    def mask_reactant(self):
         # vt =np.real(np.fft.ifft2(self.tf_vt))
         # vt = vt * mask
         # self.tf_vt = np.fft.fft2(vt)
         vt = np.real(np.fft.ifft2(self.tf_vt))
-        vt[mask >= 0.5] = 1.0
+        vt[self.mask >= 0.5] = 1.0
         self.tf_vt = np.fft.fft2(vt)
 
         ut = np.real(np.fft.ifft2(self.tf_ut))
-        ut[mask >= 0.5] = 0.0
+        ut[self.mask >= 0.5] = 0.0
         self.tf_ut = np.fft.fft2(ut)
 
     def step(self):
+        self.mask_reactant()
         if(self.mode == 'ETDFD'):
             Nu, Nv = self.compute_Nuv(self.tf_ut, self.tf_vt)
             self.tf_ut = self.Eu * self.tf_ut \
@@ -385,9 +391,9 @@ class ThreadedModel(Thread):
         with self.mutex:
             return self.model.get_ut().copy()
 
-    def mask_reactant(self, mask):
+    def set_mask(self, mask):
         with self.mutex:
-            self.model.mask_reactant(mask)
+            self.model.set_mask(mask)
 
     def erase_reactant(self, center, radius):
         with self.mutex:

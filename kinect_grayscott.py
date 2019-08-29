@@ -55,12 +55,13 @@ d = 3.0
 width = 200
 height = 100
 dt = 10
-pattern = 'worms_solitons'
+pattern = 'solitons'
 display_scaling_factor = 4
 # The frustum for the kinect depth
 zmin = 1
 zmax = 4
-
+# The minimum delay between two mask updates
+masking_period = 0.01
 
 
 def make_effect(u_orig, scale):
@@ -115,6 +116,7 @@ u = np.zeros((height, width))
 depth = np.ones((height, width))
 depth_img = np.zeros((2, 2, 3), dtype=np.float)
 can_mask = False
+t_last_mask = None
 
 t0 = time.time()
 epoch = 0
@@ -126,7 +128,8 @@ while key != ord('q'):
     if((model.get_ut().mean() <= 0.9) and not can_mask):
         can_mask = True
         print("Masking begins")
-    if not model.is_paused() and can_mask:
+
+    if not model.is_paused() and can_mask and (t_last_mask is None or (time.time() - t_last_mask > masking_period)) :
         depth = get_depth_meters()
         # Restrict to box in [zmin; zmax]
         # depth is scaled in meters, and the horizontal axis is flipped
@@ -144,7 +147,8 @@ while key != ord('q'):
         # print(depth.min(), depth.max(), depth.mean())
         # depth = depth * 0.85 / depth.mean()
         # mask = 0.75 + 0.25 * depth
-        model.mask_reactant(depth)
+        model.set_mask(depth)
+        t_last_mask = time.time()
 
     u_img = make_effect(model.get_ut(), display_scaling_factor)
     insert_text(u_img, "GrayScott Reaction Diffusion")
