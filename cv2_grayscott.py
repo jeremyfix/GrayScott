@@ -66,7 +66,7 @@ else:
     width = 200
     dt = 10
 display_scaling_factor = 4
-pattern = 'worms'
+pattern = 'worms_solitons'
 
 if(mode <= 2):
     model = grayscott.Model(pattern,

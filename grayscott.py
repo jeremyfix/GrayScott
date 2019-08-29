@@ -54,6 +54,9 @@ class SpectralModel:
         if(self.param_name == 'solitons'):
             self.k = 0.056
             self.F = 0.020
+        elif(self.param_name == "worms_solitons"):
+            self.k = 0.057
+            self.F = 0.026
         elif(self.param_name == 'worms'):
             self.k = 0.0630
             self.F = 0.0580
