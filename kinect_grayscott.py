@@ -1,19 +1,17 @@
 # coding: utf-8
 # Simulation of the gray scott reaction diffusion system.
-#      /  
+#      /
 #      |  ∂ₜu(x,t) = Dᵤ ∇²u(x,t) - u(x,t) v²(x,t) + F(1- u(x,t))
 #      |  ∂ₜv(x,t) = Dᵥ ∇²v(x,t) + u(x,t) v²(x,t) - (F + k) v(x,t)
 #      \
 
 
 import cv2
-import sys
-import random
 import numpy as np
 import time
 import freenect
 from freenect import sync_get_depth as get_depth
-import scipy 
+import scipy
 
 import grayscott
 
@@ -30,7 +28,7 @@ except:
     fullscreen_flag = cv2.cv.CV_WINDOW_FULLSCREEN
     normal_flag = cv2.cv.CV_WINDOW_NORMAL
 
-#cv2.namedWindow("Depth")
+# cv2.namedWindow("Depth")
 cv2.namedWindow('u', cv2.WND_PROP_FULLSCREEN)
 cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
@@ -42,7 +40,7 @@ d = 3.0
 width = 200
 height = 100
 dt = 10
-pattern = 'spirals'
+pattern = 'worms'
 display_scaling_factor = 4
 # The frustum for the kinect depth
 zmin = 1
@@ -71,7 +69,7 @@ def make_effect(u_orig, scale):
     u_blur = scipy.ndimage.filters.uniform_filter(u_hires, size=5)
     # Shift the shadding down right
     u_blur = np.lib.pad(u_blur, ((2,0),(2,0)), 'constant', constant_values=1)[:-2,:-2]
-    
+
     dst = 0.6 * u_hires + 0.4 * effect_hires
     dst[u_hires >= 0.99] = u_blur[u_hires >= 0.99]
     return dst
@@ -90,14 +88,17 @@ def insert_depth(depth_img, img):
     return
 
 
-model = grayscott.SpectralModel(pattern, width, height, d=d, dt=dt, mode='ETDFD')
+model = grayscott.SpectralModel(pattern,
+                                width, height,
+                                d=d, dt=dt, mode='ETDFD')
+model = grayscott.ThreadedModel(model)
 model.init()
-
+model.start()
 
 u = np.zeros((height, width))
 
 depth = np.ones((height, width))
-depth_img = np.zeros((2,2,3), dtype=np.float)
+depth_img = np.zeros((2, 2, 3), dtype=np.float)
 can_mask = False
 
 t0 = time.time()
@@ -110,37 +111,30 @@ while key != ord('q'):
     if((model.get_ut().mean() <= 0.9) and not can_mask):
         can_mask = True
         print("Masking begins")
-    if(run):
-        epoch += 1
-        #print(epoch)
-        if(epoch == 100):
-            t1 = time.time()
-	    print("FPS: %f fps" % (100 / (t1 - t0)))
-	    t0 = t1
-            epoch = 0
-        if(can_mask and (epoch % 2 == 0)):
-            (depth,_) = get_depth(format=freenect.DEPTH_MM)
-            # Restrict to box in [zmin; zmax]
-            # depth is scaled in meters, and the horizontal axis is flipped
-            # what is in [zmin, zmax] is rescaled to [1, 0] , the rest set to 0
-            depth = (zmax - depth[:,::-1]*1e-3)/(zmax - zmin)
-            depth[depth < 0] = 0
-            depth[depth > 1] = 0
+    if not model.is_paused() and can_mask:
+        res = get_depth(format=freenect.DEPTH_MM)
+        if res is None:
+            break
+        depth = res[0]
+        # Restrict to box in [zmin; zmax]
+        # depth is scaled in meters, and the horizontal axis is flipped
+        # what is in [zmin, zmax] is rescaled to [1, 0] , the rest set to 0
+        depth = (zmax - depth[:, ::-1]*1e-3)/(zmax - zmin)
+        depth[depth < 0] = 0
+        depth[depth > 1] = 0
 
-            depth_img = (np.dstack((depth, depth, depth)).astype(np.float))
-            #cv2.resize(depth_img, (width, height))
-            #cv2.imshow('Depth', depth_img)
-            
-            depth = cv2.resize(depth.astype(np.float), (width, height))
-	    #depth = 1. - cv2.resize(depth, (N, N))
-            #print(depth.min(), depth.max(), depth.mean())
-            #depth = depth * 0.85 / depth.mean()
-            #mask = 0.75 + 0.25 * depth
+        depth_img = (np.dstack((depth, depth, depth)).astype(np.float))
+        # cv2.resize(depth_img, (width, height))
+        # cv2.imshow('Depth', depth_img)
+
+        depth = cv2.resize(depth.astype(np.float), (width, height))
+        # depth = 1. - cv2.resize(depth, (N, N))
+        # print(depth.min(), depth.max(), depth.mean())
+        # depth = depth * 0.85 / depth.mean()
+        # mask = 0.75 + 0.25 * depth
         model.mask_reactant(depth)
-        model.step()
-        u[:,:] = model.get_ut()
 
-    u_img = make_effect(u, display_scaling_factor)
+    u_img = make_effect(model.get_ut(), display_scaling_factor)
     insert_text(u_img, "GrayScott Reaction Diffusion")
     insert_depth(depth_img, u_img)
 
@@ -148,15 +142,9 @@ while key != ord('q'):
 
     key = cv2.waitKey(1) & 0xFF
 
-    if(key == ord('c')):
-        c = (random.randint(0, N-1), random.randint(0, N-1))
-        model.erase_reactant(c , N/8)
-    elif(key == ord('m')):
-        mask = 0.75 + 0.25*np.random.random((N, N))
-        model.mask_reactant(mask)
-    elif key == ord('s'):
-        run = not run
-        print("Running ? : " + str(run))
+    if key == ord('s'):
+        model.trigger_pause()
+        print("Running ? : " + str(not model.is_paused()))
     elif key == ord('i'):
         model.init()
     elif key == ord('f'):
