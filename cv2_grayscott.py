@@ -83,7 +83,9 @@ else:
                                     d=d, dt=dt,
                                     mode='ETDFD')
 
+model = grayscott.ThreadedModel(model)
 model.init()
+model.start()
 
 # Precompute the FFT of the kernel for speeding up the convolution
 # For lightning
@@ -141,13 +143,13 @@ epoch = 0
 t0 = time.time()
 frame_id = 0
 while key != ord('q'):
-    if(run):
-        model.step()
-        epoch += 1
-        if(epoch % 100 == 0):
-                t1 = time.time()
-                print("FPS: %f fps" % (100 / (t1 - t0)))
-                t0 = t1
+    # if(run):
+    #     model.step()
+    #     epoch += 1
+    #     if(epoch % 100 == 0):
+    #             t1 = time.time()
+    #             print("FPS: %f fps" % (100 / (t1 - t0)))
+    #             t0 = t1
 
     u_img = make_effect(model.get_ut(), display_scaling_factor)
     cv2.imshow('u', u_img)
@@ -161,8 +163,8 @@ while key != ord('q'):
         mask = 0.75 + 0.25*np.random.random((height, width))
         model.mask_reactant(mask)
     elif key == ord('s'):
-        run = not run
-        print("Running ? : " + str(run))
+        model.trigger_pause()
+        print("Running ? : " + str(not model.is_paused()))
     elif key == ord('i'):
         model.init()
     elif key == ord('p'):
@@ -178,3 +180,6 @@ while key != ord('q'):
                                   fullscreen_flag)
         else:
             cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, normal_flag)
+
+model.stop()
+model.join()

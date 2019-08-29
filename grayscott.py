@@ -6,6 +6,7 @@ import scipy.ndimage
 import time
 import sys
 from threading import Thread, Lock
+from time import sleep
 
 # import libgrayscott
 
@@ -371,6 +372,7 @@ class ThreadedModel(Thread):
         self.model = model
         self.mutex = Lock()
         self.running = True
+        self.paused = False
 
     def init(self):
         with self.mutex:
@@ -388,14 +390,30 @@ class ThreadedModel(Thread):
         with self.mutex:
             return self.running
 
+    def trigger_pause(self):
+        with self.mutex:
+            self.paused = not self.paused
+
+    def is_paused(self):
+        with self.mutex:
+            return self.paused
+
     def run(self):
         while self.keep_running():
-            with self.mutex:
-                self.model.step()
+            if not self.is_paused():
+                self.step()
+                sleep(0.000001)
+            else:
+                sleep(0.1)
 
     def stop(self):
         with self.mutex:
             self.running = False
+
+    def step(self):
+        with self.mutex:
+            self.model.step()
+
 
 
 def test_basic(model):
