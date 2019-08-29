@@ -382,6 +382,10 @@ class ThreadedModel(Thread):
         with self.mutex:
             return self.model.get_ut().copy()
 
+    def mask_reactant(self, mask):
+        with self.mutex:
+            self.model.mask_reactant(mask)
+
     def erase_reactant(self, center, radius):
         with self.mutex:
             self.model.erase_reactant(center, radius)
