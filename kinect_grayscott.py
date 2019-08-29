@@ -12,8 +12,20 @@ import time
 import freenect
 from freenect import sync_get_depth as get_depth
 import scipy
+import sys
 
 import grayscott
+
+
+def get_depth_meters():
+    depth, _ = get_depth(format=freenect.DEPTH_MM)
+    return depth*1e-3
+
+
+try:
+    get_depth_meters()
+except:
+    sys.exit(-1)
 
 print(" Press : ")
 print("   s : start/pause")
@@ -40,7 +52,7 @@ d = 3.0
 width = 200
 height = 100
 dt = 10
-pattern = 'worms'
+pattern = 'spirals'
 display_scaling_factor = 4
 # The frustum for the kinect depth
 zmin = 1
@@ -112,14 +124,11 @@ while key != ord('q'):
         can_mask = True
         print("Masking begins")
     if not model.is_paused() and can_mask:
-        res = get_depth(format=freenect.DEPTH_MM)
-        if res is None:
-            break
-        depth = res[0]
+        depth = get_depth_meters()
         # Restrict to box in [zmin; zmax]
         # depth is scaled in meters, and the horizontal axis is flipped
         # what is in [zmin, zmax] is rescaled to [1, 0] , the rest set to 0
-        depth = (zmax - depth[:, ::-1]*1e-3)/(zmax - zmin)
+        depth = (zmax - depth[:, ::-1])/(zmax - zmin)
         depth[depth < 0] = 0
         depth[depth > 1] = 0
 
@@ -153,3 +162,6 @@ while key != ord('q'):
             cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, fullscreen_flag)
         else:
             cv2.setWindowProperty("u", cv2.WND_PROP_FULLSCREEN, normal_flag)
+
+model.stop()
+model.join()
