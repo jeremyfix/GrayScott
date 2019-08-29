@@ -22,10 +22,13 @@ def get_depth_meters():
     return depth*1e-3
 
 
+print("Try to get a depth image from the kinect to"
+      "to ensure it works correctly")
 try:
     get_depth_meters()
 except:
     sys.exit(-1)
+print("Ok; I'm happy")
 
 print(" Press : ")
 print("   s : start/pause")
@@ -48,10 +51,10 @@ key = 0
 run = False
 
 #
-d = 3.0
+d = 4.0
 width = 200
 height = 100
-dt = 10
+dt = 6
 pattern = 'spirals'
 display_scaling_factor = 4
 # The frustum for the kinect depth
