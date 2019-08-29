@@ -55,7 +55,7 @@ d = 3.0
 width = 200
 height = 100
 dt = 10
-pattern = 'solitons'
+pattern = 'worms_solitons'
 display_scaling_factor = 4
 # The frustum for the kinect depth
 zmin = 1
